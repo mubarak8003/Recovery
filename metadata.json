@@ -1,0 +1,6 @@
+{
+  "name": "Trade Sizer - Loss Recovery & Regular Profit Wallet",
+  "description": "Smart trade sizing advisor that tells you exactly how much your next trade should be to recover losses safely, while adding a guaranteed regular profit percentage to your wallet on every trade.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
