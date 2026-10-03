@@ -54,6 +54,9 @@ interface TradeContextType {
   updateSettings: (newSettings: Partial<Settings>) => void;
   setTradingCapital: (amount: number) => void;
   setActiveLossAmount: (amount: number) => void;
+  theme: 'dark' | 'light';
+  setTheme: (t: 'dark' | 'light') => void;
+  toggleTheme: () => void;
   setLanguage: (lang: Language) => void;
   resetAll: (newCapital?: number) => void;
   currencyFormat: (amount: number) => string;
@@ -130,6 +133,46 @@ export const TradeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const [totalLossCount, setTotalLossCount] = useState<number>(
     () => initialData?.totalLossCount ?? 0
   );
+  const [theme, setThemeState] = useState<'dark' | 'light'>(() => {
+    try {
+      const saved = localStorage.getItem('tradesizer_theme');
+      if (saved === 'light' || saved === 'dark') return saved;
+      return 'dark';
+    } catch {
+      return 'dark';
+    }
+  });
+
+  const setTheme = useCallback((t: 'dark' | 'light') => {
+    setThemeState(t);
+    try {
+      localStorage.setItem('tradesizer_theme', t);
+    } catch {}
+  }, []);
+
+  const toggleTheme = useCallback(() => {
+    setThemeState((prev) => {
+      const next = prev === 'dark' ? 'light' : 'dark';
+      try {
+        localStorage.setItem('tradesizer_theme', next);
+      } catch {}
+      return next;
+    });
+  }, []);
+
+  // Sync theme class on document
+  useEffect(() => {
+    if (theme === 'light') {
+      document.documentElement.classList.add('light-theme');
+      document.body.classList.add('light-theme');
+      document.documentElement.classList.remove('dark');
+    } else {
+      document.documentElement.classList.remove('light-theme');
+      document.body.classList.remove('light-theme');
+      document.documentElement.classList.add('dark');
+    }
+  }, [theme]);
+
   const [language, setLanguage] = useState<Language>(
     () => initialData?.language ?? 'hi'
   );
@@ -193,46 +236,6 @@ export const TradeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     tradeHistory,
   ]);
 
-  // Recalculate recommendation whenever capital, activeLoss, step or settings change
-  const { recommendation, stepDetails } = useMemo(() => {
-    const res = calculateNextTradeRecommendation(
-      tradingCapital,
-      activeLoss,
-      currentStepIndex,
-      consecutiveLossCount,
-      settings
-    );
-
-    if (customTradeAmountOverride !== null && customTradeAmountOverride > 0) {
-      const amt = customTradeAmountOverride;
-      const riskPct = Number(((amt / tradingCapital) * 100).toFixed(1));
-      const targetProfit = Number((amt * settings.riskRewardRatio).toFixed(1));
-      const yieldAmt = Number(((amt * (settings.yieldRatePercent / 100)).toFixed(2)));
-
-      return {
-        stepDetails: res.stepDetails,
-        recommendation: {
-          ...res.recommendation,
-          amount: amt,
-          riskPercentOfCapital: riskPct,
-          targetProfit,
-          walletYieldWillAdd: yieldAmt,
-          reason: `Manual Custom Size: ${settings.currencySymbol}${amt} (${riskPct}% capital) set by user.`,
-          reasonHindi: `कस्टम ट्रेड राशि: आपके अनुसार ${settings.currencySymbol}${amt} (कैपिटल का ${riskPct}%) सेट की गई।`,
-        },
-      };
-    }
-
-    return res;
-  }, [
-    tradingCapital,
-    activeLoss,
-    currentStepIndex,
-    consecutiveLossCount,
-    settings,
-    customTradeAmountOverride,
-  ]);
-
   const currencyFormat = useCallback(
     (amount: number) => {
       const sym = settings.currencySymbol;
@@ -243,6 +246,23 @@ export const TradeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     },
     [settings.currencySymbol]
   );
+
+  // Recalculate recommendation whenever capital, activeLoss, step or settings change
+  const { recommendation, stepDetails } = useMemo(() => {
+    return calculateNextTradeRecommendation(
+      tradingCapital,
+      activeLoss,
+      currentStepIndex,
+      consecutiveLossCount,
+      settings
+    );
+  }, [
+    tradingCapital,
+    activeLoss,
+    currentStepIndex,
+    consecutiveLossCount,
+    settings,
+  ]);
 
   // Core action: Record Trade (Win or Loss)
   const recordTrade = useCallback(
@@ -255,19 +275,10 @@ export const TradeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       const { amount, result, actualPnL, note } = params;
       if (amount <= 0 || isNaN(amount)) return;
 
-      // 1. Calculate guaranteed Regular Profit Yield for the safe wallet
-      const yieldAdded = Number(((amount * (settings.yieldRatePercent / 100)).toFixed(2)));
-
-      // Credit regular profit to wallet immediately!
-      setRegularProfitWallet((prev) => Number((prev + yieldAdded).toFixed(2)));
-      setLifetimeYieldEarned((prev) => Number((prev + yieldAdded).toFixed(2)));
-
-      // Trigger instant toast notification
-      setRecentYieldToast({ amount: yieldAdded, id: Date.now() });
-
       const lossBefore = activeLoss;
       let lossAfter = activeLoss;
       let calculatedPnL = 0;
+      let walletYieldAdded = 0;
 
       if (result === 'LOSS') {
         calculatedPnL = actualPnL !== undefined ? -Math.abs(actualPnL) : -amount;
@@ -279,10 +290,10 @@ export const TradeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         setConsecutiveLossCount((prev) => prev + 1);
         setTotalLossCount((prev) => prev + 1);
 
-        // Advance Divide Factor dynamically on forward loss (+1 from current manual setting)
+        // Advance Divide Factor dynamically on forward loss (+1 from current manual setting, up to 100)
         setSettings((prev) => {
           const currentFactor = prev.recoveryStepsCount || 1;
-          const nextFactor = Math.min(10, currentFactor + 1);
+          const nextFactor = Math.min(100, currentFactor + 1);
           return {
             ...prev,
             recoveryStepsCount: nextFactor,
@@ -292,17 +303,29 @@ export const TradeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         // Advance to next recovery step
         setCurrentStepIndex((prev) => prev + 1);
       } else {
-        // WIN
-        const payout =
+        // WIN: Total real payout from broker
+        const totalWinPayout =
           actualPnL !== undefined
             ? Math.abs(actualPnL)
             : Number((amount * settings.riskRewardRatio).toFixed(2));
-        calculatedPnL = payout;
-        setTradingCapitalState((prev) => Number((prev + calculatedPnL).toFixed(2)));
+
+        // Extra profit for wallet earned on WIN
+        walletYieldAdded = Number(((amount * (settings.yieldRatePercent / 100)).toFixed(2)));
+
+        // Credit extra profit to safe wallet
+        if (walletYieldAdded > 0) {
+          setRegularProfitWallet((prev) => Number((prev + walletYieldAdded).toFixed(2)));
+          setLifetimeYieldEarned((prev) => Number((prev + walletYieldAdded).toFixed(2)));
+          setRecentYieldToast({ amount: walletYieldAdded, id: Date.now() });
+        }
+
+        // Payout trade ke hisab se pura milega: Full payout credited to trading capital
+        calculatedPnL = totalWinPayout;
+        setTradingCapitalState((prev) => Number((prev + totalWinPayout).toFixed(2)));
 
         if (activeLoss > 0) {
-          const recovered = Math.min(activeLoss, calculatedPnL);
-          lossAfter = Math.max(0, Number((activeLoss - calculatedPnL).toFixed(2)));
+          const recovered = Math.min(activeLoss, totalWinPayout);
+          lossAfter = Math.max(0, Number((activeLoss - totalWinPayout).toFixed(2)));
           setActiveLoss(lossAfter);
           setTotalRecovered((prev) => Number((prev + recovered).toFixed(2)));
 
@@ -345,7 +368,7 @@ export const TradeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         tradeAmount: amount,
         result,
         pnl: calculatedPnL,
-        walletYieldAdded: yieldAdded,
+        walletYieldAdded,
         lossBeforeTrade: lossBefore,
         lossAfterTrade: lossAfter,
         recoveryStep: activeLoss > 0 ? currentStepIndex + 1 : 0,
@@ -507,6 +530,9 @@ export const TradeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         updateSettings,
         setTradingCapital,
         setActiveLossAmount,
+        theme,
+        setTheme,
+        toggleTheme,
         setLanguage,
         resetAll,
         currencyFormat,

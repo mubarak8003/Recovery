@@ -53,8 +53,8 @@ export const RecoveryLadderView: React.FC = () => {
       ? Math.min(100, Math.round((totalRecovered / initialLoss) * 100))
       : 100;
 
-  // Options for quick step chips
-  const stepOptions = [1, 2, 3, 4, 5, 6, 8, 10];
+  // Options for quick step chips - expanded up to 50 steps
+  const stepOptions = [1, 2, 3, 4, 5, 6, 7, 8, 10, 12, 15, 20, 25, 30, 40, 50];
 
   // Options for quick RR chips, INCLUDING values < 1 (e.g. 0.8 for 80% binary payout, 0.85 for 85%)
   const rrOptions: { label: string; value: number }[] = [
@@ -101,6 +101,7 @@ export const RecoveryLadderView: React.FC = () => {
       updateSettings({ recoveryStepsCount: 3 });
     } else {
       setStepsInput(String(parsed));
+      updateSettings({ recoveryStepsCount: parsed });
     }
   };
 

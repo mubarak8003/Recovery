@@ -7,11 +7,25 @@ import {
 } from '../types/trading';
 
 /**
- * Pure, transparent Loss Recovery Trade Sizing:
- * When in recovery mode, the trade size is strictly and purely calculated
- * to recover the ACTUAL LOSS that occurred, divided across the user-selected
- * number of trades (steps), based on the user-selected Risk:Reward ratio.
- * No arbitrary capital percentage inflation is added!
+ * Pure Loss Recovery & Normal Trade Sizing with True Dual-Account Funding:
+ * 
+ * "Agar 67 investment karega to sirf tr ka hi payout hoga waloka kaha se aayega dono ke liye socho"
+ * 
+ * Mathematical Truth:
+ * If you invest 67 at 85% payout, the broker ONLY pays 56.95 (only TR profit).
+ * The wallet cannot get 10.05 out of thin air!
+ * 
+ * Therefore, to get BOTH TR Profit (56.95) + Wallet Profit (10.05) = Total 67.00:
+ * The investment (trade amount) MUST be sized so that broker payout pays for BOTH:
+ * 
+ * Trade Size = (TR Target Profit + Wallet Target Profit) / Effective RR
+ * Example: (56.95 + 10.05) / 0.85 = 67.00 / 0.85 = ₹79!
+ * 
+ * When ₹79 is won at 85%:
+ * Broker pays: ₹79 × 0.85 = +₹67.15!
+ * - TR receives: ₹56.95!
+ * - Wallet receives: ₹10.20!
+ * Both are 100% paid by the broker! Zero fake money!
  */
 export function calculateNextTradeRecommendation(
   tradingCapital: number,
@@ -24,87 +38,120 @@ export function calculateNextTradeRecommendation(
   stepDetails: RecoveryStepDetail[];
 } {
   const {
-    baseTradePercent,
-    yieldRatePercent,
-    riskRewardRatio = 1.5,
-    maxRiskPercentCap,
-    strategy,
-    recoveryStepsCount = 3,
+    baseTradePercent = 2,
+    yieldRatePercent = 15,
+    riskRewardRatio = 0.85,
+    maxRiskPercentCap = 25,
+    strategy = 'SMART_LADDER',
+    recoveryStepsCount = 1,
   } = settings;
 
-  const baseTradeAmount = Math.max(
+  const safeCapital = Math.max(10, Number(tradingCapital) || 10000);
+  const safeActiveLoss = Math.max(0, Number(activeLoss) || 0);
+  const effectiveRR = Math.max(0.1, Number(riskRewardRatio) || 0.85);
+  const safeYieldRate = Math.max(0, Number(yieldRatePercent) || 0);
+
+  // BASE / NORMAL TRADE SIZING (Both TR + Wallet Funded by Broker):
+  // Desired Base Risk/Size reference:
+  const baseTarget = Math.max(
     10,
-    Number(((tradingCapital * baseTradePercent) / 100).toFixed(0))
+    Math.round((safeCapital * baseTradePercent) / 100)
   );
 
-  // If there is NO active loss to recover (Clean / Healthy Account)
-  if (activeLoss <= 0) {
-    const yieldAmount = Number(
-      ((baseTradeAmount * yieldRatePercent) / 100).toFixed(2)
+  // If there is NO active loss to recover (Normal Clean Trading)
+  if (safeActiveLoss <= 0) {
+    // 1. TR target profit (e.g. 67 * 0.85 = 56.95)
+    const targetTRProfit = Number((baseTarget * effectiveRR).toFixed(2));
+    
+    // 2. Wallet target profit (e.g. 67 * 0.15 = 10.05)
+    const targetWalletProfit = Number(((baseTarget * (safeYieldRate / 100)).toFixed(2)));
+    
+    // 3. Total profit needed from broker so both TR and Wallet are fully paid:
+    const totalProfitNeeded = Number((targetTRProfit + targetWalletProfit).toFixed(2));
+
+    // 4. Trade size needed on broker: Total Profit / Effective RR
+    // Example: (56.95 + 10.05) / 0.85 = 67 / 0.85 = ₹79!
+    const suggestedTradeAmount = Math.max(
+      10,
+      Math.round(totalProfitNeeded / effectiveRR)
     );
-    const targetProfit = Number(
-      (baseTradeAmount * riskRewardRatio).toFixed(2)
-    );
+
+    // Real payout broker will pay on this suggested amount:
+    const totalWinPayout = Number((suggestedTradeAmount * effectiveRR).toFixed(2));
+    const walletShare = Number(((suggestedTradeAmount * (safeYieldRate / 100)).toFixed(2)));
+    const trShare = Number(Math.max(0, totalWinPayout - walletShare).toFixed(2));
 
     return {
       recommendation: {
-        amount: baseTradeAmount,
+        amount: suggestedTradeAmount,
         stepNumber: 1,
         totalSteps: 1,
         isRecoveryMode: false,
-        targetProfit,
+        targetProfit: totalWinPayout,
         targetRiskReward: `1 : ${riskRewardRatio}`,
-        walletYieldWillAdd: yieldAmount,
+        walletYieldWillAdd: walletShare,
         riskPercentOfCapital: Number(
-          ((baseTradeAmount / tradingCapital) * 100).toFixed(1)
+          ((suggestedTradeAmount / safeCapital) * 100).toFixed(1)
         ),
         stepLossTarget: 0,
         consecutiveLossCount: 0,
-        reason: `Normal Trade: Risking ${baseTradePercent}% of capital. Target R:R 1:${riskRewardRatio}.`,
-        reasonHindi: `सामान्य बेस ट्रेड: कैपिटल का ${baseTradePercent}%, टारगेट R:R 1:${riskRewardRatio}। कोई पिछला लॉस नहीं है।`,
+        reason: `Normal Trade: ₹${suggestedTradeAmount} sized so broker payout (+₹${totalWinPayout}) covers both TR (+₹${trShare}) & Wallet (+₹${walletShare}).`,
+        reasonHindi: `नॉर्मल ट्रेड: ₹${suggestedTradeAmount} निवेश ताकि ब्रोकर पेआउट (+₹${totalWinPayout}) से TR (+₹${trShare}) और वॉलेट (+₹${walletShare}) दोनों का पूरा पैसा मिले।`,
       },
       stepDetails: [],
     };
   }
 
   // ACTIVE LOSS RECOVERY MODE:
-  // Sizing is purely based on the loss to be recovered!
-  const stepsCount = Math.max(1, recoveryStepsCount || 3);
+  // "recovery me wallet ke liya extra profit hai payout me mat dalo recovery me dalo"
+  const stepsCount = Math.max(1, Number(recoveryStepsCount) || 1);
   const stepDetails: RecoveryStepDetail[] = [];
-  const maxSafeRisk = (tradingCapital * maxRiskPercentCap) / 100;
-  const effectiveRR = Math.max(0.05, riskRewardRatio || 0.85);
+  const maxSafeRisk = (safeCapital * maxRiskPercentCap) / 100;
 
-  // Distribute the exact loss across the steps
+  // Dynamic step factors (Fibonacci / Conservative / Equal)
   let stepFactors: number[] = [];
   if (strategy === 'FIBONACCI') {
-    const fib = [1, 1, 2, 3, 5, 8, 13];
-    stepFactors = fib.slice(0, stepsCount);
+    stepFactors = [];
+    let a = 1, b = 1;
+    for (let i = 0; i < stepsCount; i++) {
+      stepFactors.push(a);
+      const next = a + b;
+      a = b;
+      b = next;
+    }
   } else if (strategy === 'CONSERVATIVE_5STEP') {
     stepFactors = Array.from({ length: stepsCount }, (_, idx) => 1 + idx * 0.1);
   } else {
-    // Standard / Equal distribution or very slight progression
-    // If user chose 2 steps, each step recovers ~50% of the loss
-    // If 3 steps, each step recovers ~33.3% of the loss
+    // Standard Equal distribution (e.g. ÷2, ÷3, ÷4, ÷8, ÷9)
     stepFactors = Array.from({ length: stepsCount }, () => 1);
   }
 
-  const factorSum = stepFactors.reduce((a, b) => a + b, 0);
-  const basePortion = activeLoss / factorSum;
+  const factorSum = stepFactors.reduce((a, b) => a + (Number(b) || 1), 0) || 1;
+  const basePortion = safeActiveLoss / factorSum;
 
   for (let i = 0; i < stepsCount; i++) {
-    const factor = stepFactors[i];
+    const factor = Number(stepFactors[i]) || 1;
     const portionLoss = basePortion * factor;
 
-    // Direct mathematical sizing:
-    // Profit needed to recover this step's loss slice = portionLoss
-    // Required Trade Size = portionLoss / effectiveRR
-    let calculatedTrade = portionLoss / effectiveRR;
+    // "Wallet ki percent kam kyu use to trade amount hisaab se hoga"
+    // To cover BOTH portionLoss AND wallet yield on the trade amount:
+    // Trade * effectiveRR = portionLoss + Trade * (safeYieldRate / 100)
+    // Trade = portionLoss / (effectiveRR - safeYieldRate / 100)
+    const netRate = Math.max(0.1, Number((effectiveRR - safeYieldRate / 100).toFixed(4)));
+    let calculatedTrade = portionLoss / netRate;
 
-    // Apply strict safety cap so a single trade never blows the account
+    // Strict NaN & Infinity Prevention
+    if (isNaN(calculatedTrade) || !isFinite(calculatedTrade) || calculatedTrade <= 0) {
+      calculatedTrade = Math.max(1, Math.round(safeActiveLoss / stepsCount));
+    }
+
+    // Apply safety risk cap
     calculatedTrade = Math.min(calculatedTrade, maxSafeRisk);
     calculatedTrade = Math.max(1, Math.round(calculatedTrade));
 
-    const finalTargetProfit = Number((calculatedTrade * effectiveRR).toFixed(1));
+    // Payout is purely based on the calculated trade amount: Trade Amount × Effective RR
+    const actualWinPayout = Number((calculatedTrade * effectiveRR).toFixed(2));
+    const stepWalletExtra = Number(((calculatedTrade * (safeYieldRate / 100)).toFixed(2)));
 
     let status: 'PENDING' | 'CURRENT' | 'COMPLETED' = 'PENDING';
     if (i < currentStepIndex) {
@@ -116,19 +163,32 @@ export function calculateNextTradeRecommendation(
     stepDetails.push({
       stepNumber: i + 1,
       suggestedAmount: calculatedTrade,
-      targetProfit: finalTargetProfit,
+      targetProfit: actualWinPayout,
       targetRR: `1 : ${riskRewardRatio}`,
       status,
     });
   }
 
-  const clampedIndex = Math.min(currentStepIndex, stepDetails.length - 1);
+  const clampedIndex = Math.min(
+    Math.max(0, Number(currentStepIndex) || 0),
+    stepDetails.length - 1
+  );
   const currentStep = stepDetails[clampedIndex] || stepDetails[0];
-  const finalAmount = currentStep.suggestedAmount;
-  const stepTarget = Math.round(basePortion * stepFactors[clampedIndex]);
 
-  const yieldAmount = Number(((finalAmount * yieldRatePercent) / 100).toFixed(2));
-  const riskPct = Number(((finalAmount / tradingCapital) * 100).toFixed(1));
+  let finalAmount = Number(currentStep?.suggestedAmount);
+  if (isNaN(finalAmount) || !isFinite(finalAmount) || finalAmount <= 0) {
+    finalAmount = Math.max(1, Math.round(safeActiveLoss / stepsCount));
+  }
+
+  const stepTarget = Math.round(
+    basePortion * (Number(stepFactors[clampedIndex]) || 1)
+  );
+  // Wallet extra profit is ALWAYS based on the Trade Amount (trade amount hisaab se):
+  const stepWalletExtra = Number((finalAmount * (safeYieldRate / 100)).toFixed(2));
+
+  // Payout is purely based on Trade Amount × RR
+  const finalWinPayout = Number((finalAmount * effectiveRR).toFixed(2));
+  const riskPct = Number(((finalAmount / safeCapital) * 100).toFixed(1));
 
   return {
     recommendation: {
@@ -136,18 +196,14 @@ export function calculateNextTradeRecommendation(
       stepNumber: clampedIndex + 1,
       totalSteps: stepsCount,
       isRecoveryMode: true,
-      targetProfit: currentStep.targetProfit,
+      targetProfit: finalWinPayout,
       targetRiskReward: `1 : ${riskRewardRatio}`,
-      walletYieldWillAdd: yieldAmount,
-      riskPercentOfCapital: riskPct,
-      stepLossTarget: stepTarget,
-      consecutiveLossCount,
-      reason: `Step ${clampedIndex + 1}/${stepsCount} Recovery: Calculated strictly to recover ₹${stepTarget} of your ₹${Math.round(
-        activeLoss
-      )} loss at 1:${riskRewardRatio} R:R.`,
-      reasonHindi: `स्टेप ${clampedIndex + 1}/${stepsCount} रिकवरी: ₹${Math.round(
-        activeLoss
-      )} के लॉस में से ₹${stepTarget} को 1:${riskRewardRatio} R:R पर सीधे रिकवर करने की साइज़िंग।`,
+      walletYieldWillAdd: stepWalletExtra,
+      riskPercentOfCapital: isNaN(riskPct) ? 1 : riskPct,
+      stepLossTarget: isNaN(stepTarget) ? 0 : stepTarget,
+      consecutiveLossCount: Number(consecutiveLossCount) || 0,
+      reason: `Step ${clampedIndex + 1}/${stepsCount} Recovery: Trade ₹${finalAmount} sized for ₹${stepTarget} loss recovery + ₹${stepWalletExtra} wallet extra profit.`,
+      reasonHindi: `स्टेप ${clampedIndex + 1}/${stepsCount} रिकवरी: ट्रेड ₹${finalAmount} को ₹${stepTarget} लॉस रिकवरी + ₹${stepWalletExtra} वॉलेट के अतिरिक्त लाभ को मिलाकर बनाया गया है।`,
     },
     stepDetails,
   };

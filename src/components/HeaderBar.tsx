@@ -10,7 +10,10 @@ import {
   AlertTriangle,
   X,
   Sparkles,
+  Sun,
+  Moon,
 } from 'lucide-react';
+import { PWAInstallButton } from './PWAInstallButton';
 
 export const HeaderBar: React.FC = () => {
   const {
@@ -22,6 +25,8 @@ export const HeaderBar: React.FC = () => {
     updateSettings,
     resetAll,
     currencyFormat,
+    theme,
+    toggleTheme,
   } = useTrade();
 
   const [isEditingCapital, setIsEditingCapital] = useState(false);
@@ -51,14 +56,14 @@ export const HeaderBar: React.FC = () => {
   return (
     <>
       <header className="border-b border-slate-800 bg-[#090e1a]/95 backdrop-blur-md sticky top-0 z-40">
-        <div className="max-w-[1440px] mx-auto px-3 sm:px-6 h-14 sm:h-16 flex items-center justify-between gap-2 sm:gap-4">
+        <div className="max-w-[1440px] mx-auto px-2 sm:px-6 h-14 sm:h-16 flex items-center justify-between gap-1.5 sm:gap-4 overflow-x-auto scrollbar-none overscroll-x-contain">
           {/* Brand Zone */}
-          <div className="flex items-center gap-2 sm:gap-2.5 shrink-0 min-w-0">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-emerald-500 to-cyan-500 flex items-center justify-center shadow-md shadow-emerald-500/20 shrink-0">
+          <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-gradient-to-tr from-emerald-500 to-cyan-500 flex items-center justify-center shadow-md shadow-emerald-500/20 shrink-0">
               <TrendingUp className="w-4 h-4 text-slate-950 stroke-[2.5]" />
             </div>
             <div className="flex items-baseline gap-2 overflow-hidden">
-              <span className="text-base sm:text-lg font-extrabold tracking-tight text-white whitespace-nowrap">
+              <span className="text-sm sm:text-lg font-extrabold tracking-tight text-white whitespace-nowrap">
                 TradeSizer
               </span>
               <span className="hidden md:inline-block text-[10px] font-mono text-emerald-400 font-semibold uppercase tracking-wider whitespace-nowrap">
@@ -67,8 +72,8 @@ export const HeaderBar: React.FC = () => {
             </div>
           </div>
 
-          {/* Action Controls & Overview */}
-          <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
+          {/* Action Controls & Overview (Horizontally scrollable on small screens) */}
+          <div className="flex items-center gap-1 sm:gap-2 shrink-0">
             {/* Auto-Saved Status Indicator */}
             <div
               className="hidden lg:flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-900 border border-slate-800 text-[10px] text-emerald-400 font-mono"
@@ -79,7 +84,7 @@ export const HeaderBar: React.FC = () => {
             </div>
 
             {/* Trading Capital */}
-            <div className="flex items-center gap-1.5 bg-[#080d19] border border-slate-800 px-2 sm:px-3 py-1 rounded-lg sm:rounded-xl font-mono text-xs">
+            <div className="flex items-center gap-1 sm:gap-1.5 bg-[#080d19] border border-slate-800 px-2 sm:px-3 py-1 rounded-lg sm:rounded-xl font-mono text-xs shrink-0">
               <Wallet className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-slate-400 shrink-0" />
               <div className="text-right">
                 <span className="text-[9px] text-slate-500 uppercase block leading-none mb-0.5 hidden xs:block">
@@ -117,7 +122,7 @@ export const HeaderBar: React.FC = () => {
             </div>
 
             {/* Currency Selector */}
-            <div className="flex items-center bg-[#080d19] p-0.5 rounded-lg border border-slate-800 font-mono text-xs">
+            <div className="flex items-center bg-[#080d19] p-0.5 rounded-lg border border-slate-800 font-mono text-xs shrink-0">
               {currencies.map((c) => (
                 <button
                   key={c.id}
@@ -141,14 +146,48 @@ export const HeaderBar: React.FC = () => {
             {/* Language Toggle */}
             <button
               onClick={() => setLanguage(language === 'en' ? 'hi' : 'en')}
-              className="flex items-center gap-1 px-2 sm:px-2.5 py-1 rounded-lg border border-slate-700 bg-slate-800 hover:bg-slate-700 text-xs font-medium text-slate-200 transition-colors cursor-pointer shrink-0"
+              className="flex items-center gap-1 px-1.5 sm:px-2.5 py-1 rounded-lg border border-slate-700 bg-slate-800 hover:bg-slate-700 text-xs font-medium text-slate-200 transition-colors cursor-pointer shrink-0"
               title="भाषा बदलें (Hindi / English)"
             >
-              <Languages className="w-3 h-3 text-emerald-400" />
-              <span className="font-bold text-[11px] sm:text-xs">
+              <Languages className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+              <span className="font-bold text-[10px] sm:text-xs">
                 {language === 'en' ? 'हिन्दी' : 'EN'}
               </span>
             </button>
+
+            {/* Theme Toggle (Light / Dark) */}
+            <button
+              onClick={toggleTheme}
+              className="flex items-center gap-1 p-1.5 sm:px-2.5 rounded-lg border border-slate-700 bg-slate-800 hover:bg-slate-700 text-xs font-medium text-slate-200 transition-colors cursor-pointer shrink-0"
+              title={
+                theme === 'dark'
+                  ? language === 'hi'
+                    ? 'लाइट थीम चालू करें (Light Mode)'
+                    : 'Switch to Light Mode'
+                  : language === 'hi'
+                  ? 'डार्क थीम चालू करें (Dark Mode)'
+                  : 'Switch to Dark Mode'
+              }
+            >
+              {theme === 'dark' ? (
+                <>
+                  <Sun className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                  <span className="text-[11px] font-bold hidden md:inline">
+                    {language === 'hi' ? 'लाइट' : 'Light'}
+                  </span>
+                </>
+              ) : (
+                <>
+                  <Moon className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+                  <span className="text-[11px] font-bold hidden md:inline">
+                    {language === 'hi' ? 'डार्क' : 'Dark'}
+                  </span>
+                </>
+              )}
+            </button>
+
+            {/* PWA Install Button */}
+            <PWAInstallButton />
 
             {/* Refresh / Reset Session Button */}
             <button
@@ -156,11 +195,11 @@ export const HeaderBar: React.FC = () => {
                 setResetCapitalInput(String(tradingCapital || 10000));
                 setIsResetModalOpen(true);
               }}
-              className="flex items-center gap-1 p-1.5 px-2 rounded-lg border border-slate-800 bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white transition-colors cursor-pointer shrink-0 text-xs font-mono"
+              className="flex items-center gap-1 p-1.5 sm:px-2.5 rounded-lg border border-cyan-500/40 bg-cyan-950/30 hover:bg-cyan-900/40 text-cyan-300 hover:text-white transition-colors cursor-pointer shrink-0 text-xs font-mono shadow-sm"
               title={language === 'hi' ? 'रिफ्रेश / नया सेशन शुरू करें' : 'Refresh / Start Fresh Session'}
             >
-              <RotateCcw className="w-3.5 h-3.5 text-cyan-400" />
-              <span className="hidden sm:inline text-[11px]">
+              <RotateCcw className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+              <span className="hidden sm:inline text-[11px] font-semibold">
                 {language === 'hi' ? 'रिफ्रेश' : 'Refresh'}
               </span>
             </button>

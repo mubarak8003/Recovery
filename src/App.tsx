@@ -5,6 +5,7 @@ import { FullDisplayTradingConsole } from './components/FullDisplayTradingConsol
 import { RecoveryLadderView } from './components/RecoveryLadderView';
 import { RegularProfitWalletCard } from './components/RegularProfitWalletCard';
 import { TradeHistoryJournal } from './components/TradeHistoryJournal';
+import { OfflineIndicator } from './components/OfflineIndicator';
 import {
   Coins,
   PartyPopper,
@@ -22,15 +23,25 @@ const MainWorkspace: React.FC = () => {
     currencyFormat,
     recoveryCompletedModal,
     setRecoveryCompletedModal,
+    theme,
   } = useTrade();
+
+  const isDark = theme === 'dark';
 
   // Tab switcher for below the trading console: 'journal' | 'ladder' | 'wallet' | 'all'
   const [activeTab, setActiveTab] = useState<'journal' | 'ladder' | 'wallet' | 'all'>('journal');
 
   return (
-    <div className="min-h-screen bg-[#070b14] text-slate-100 flex flex-col font-sans selection:bg-emerald-500/30 selection:text-emerald-300">
+    <div
+      className={`min-h-screen flex flex-col font-sans transition-colors selection:bg-emerald-500/30 selection:text-emerald-300 ${
+        isDark ? 'bg-[#070b14] text-slate-100' : 'bg-[#f1f5f9] text-slate-900'
+      }`}
+    >
       {/* Header Bar */}
       <HeaderBar />
+
+      {/* Offline Connectivity Status Banner */}
+      <OfflineIndicator />
 
       {/* Floating Toast Notification for Guaranteed Regular Profit Wallet Credit */}
       {recentYieldToast && (
@@ -86,20 +97,28 @@ const MainWorkspace: React.FC = () => {
       )}
 
       {/* Main Workspace: Direct Full Display Console (No bulky separate main card) */}
-      <main className="flex-1 max-w-[1440px] w-full mx-auto px-2 sm:px-6 py-3 sm:py-6 space-y-4 sm:space-y-6 pb-28">
+      <main className="flex-1 max-w-[1440px] w-full mx-auto px-2 sm:px-6 py-2 sm:py-4 space-y-2 sm:space-y-3 pb-28">
         {/* UNIFIED FULL DISPLAY TRADING CONSOLE: Amount, Divide, Loss & Big WIN/LOSS Buttons in 1 View */}
         <FullDisplayTradingConsole />
 
         {/* View Switcher Bar for Auxiliary Sections */}
-        <div className="flex items-center justify-between gap-2 overflow-x-auto p-1 bg-[#090f1d] border border-slate-800 rounded-xl text-xs font-medium">
+        <div
+          className={`flex items-center justify-between gap-2 overflow-x-auto p-1 rounded-xl text-xs font-medium border transition-colors ${
+            isDark ? 'bg-[#090f1d] border-slate-800' : 'bg-white border-slate-200 shadow-sm'
+          }`}
+        >
           <div className="flex items-center gap-1">
             <button
               type="button"
               onClick={() => setActiveTab('journal')}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
                 activeTab === 'journal'
-                  ? 'bg-slate-800 text-emerald-400 font-bold border border-slate-700 shadow-sm'
-                  : 'text-slate-400 hover:text-slate-200'
+                  ? isDark
+                    ? 'bg-slate-800 text-emerald-400 font-bold border border-slate-700 shadow-sm'
+                    : 'bg-emerald-50 text-emerald-700 font-bold border border-emerald-200 shadow-sm'
+                  : isDark
+                  ? 'text-slate-400 hover:text-slate-200'
+                  : 'text-slate-500 hover:text-slate-900'
               }`}
             >
               <BookOpen className="w-3.5 h-3.5" />
@@ -111,8 +130,12 @@ const MainWorkspace: React.FC = () => {
               onClick={() => setActiveTab('ladder')}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
                 activeTab === 'ladder'
-                  ? 'bg-slate-800 text-amber-400 font-bold border border-slate-700 shadow-sm'
-                  : 'text-slate-400 hover:text-slate-200'
+                  ? isDark
+                    ? 'bg-slate-800 text-amber-400 font-bold border border-slate-700 shadow-sm'
+                    : 'bg-amber-50 text-amber-700 font-bold border border-amber-200 shadow-sm'
+                  : isDark
+                  ? 'text-slate-400 hover:text-slate-200'
+                  : 'text-slate-500 hover:text-slate-900'
               }`}
             >
               <Layers className="w-3.5 h-3.5" />
@@ -124,8 +147,12 @@ const MainWorkspace: React.FC = () => {
               onClick={() => setActiveTab('wallet')}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
                 activeTab === 'wallet'
-                  ? 'bg-slate-800 text-cyan-400 font-bold border border-slate-700 shadow-sm'
-                  : 'text-slate-400 hover:text-slate-200'
+                  ? isDark
+                    ? 'bg-slate-800 text-cyan-400 font-bold border border-slate-700 shadow-sm'
+                    : 'bg-cyan-50 text-cyan-700 font-bold border border-cyan-200 shadow-sm'
+                  : isDark
+                  ? 'text-slate-400 hover:text-slate-200'
+                  : 'text-slate-500 hover:text-slate-900'
               }`}
             >
               <Wallet className="w-3.5 h-3.5" />
@@ -138,8 +165,12 @@ const MainWorkspace: React.FC = () => {
             onClick={() => setActiveTab('all')}
             className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] transition-all cursor-pointer shrink-0 ${
               activeTab === 'all'
-                ? 'bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/40'
-                : 'text-slate-400 hover:text-slate-300'
+                ? isDark
+                  ? 'bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/40'
+                  : 'bg-emerald-500 text-white font-bold shadow-sm'
+                : isDark
+                ? 'text-slate-400 hover:text-slate-300'
+                : 'text-slate-500 hover:text-slate-900'
             }`}
           >
             <LayoutGrid className="w-3 h-3" />
@@ -152,7 +183,7 @@ const MainWorkspace: React.FC = () => {
         {activeTab === 'ladder' && <RecoveryLadderView />}
         {activeTab === 'wallet' && <RegularProfitWalletCard />}
         {activeTab === 'all' && (
-          <div className="space-y-4 sm:space-y-6">
+          <div className="space-y-2 sm:space-y-3">
             <TradeHistoryJournal />
             <RecoveryLadderView />
             <RegularProfitWalletCard />
