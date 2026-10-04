@@ -2,7 +2,7 @@ import sharp from 'sharp';
 import path from 'path';
 import fs from 'fs';
 
-const inputPath = path.resolve('src/assets/images/tradesizer_app_icon_1791101867788.jpg');
+const inputPath = path.resolve('src/assets/images/tradesizer_clean_bleed.jpg');
 const publicDir = path.resolve('public');
 
 if (!fs.existsSync(inputPath)) {
@@ -15,16 +15,19 @@ if (!fs.existsSync(publicDir)) {
 }
 
 async function processIcons() {
-  console.log('Processing app icons from:', inputPath);
+  console.log('Generating edge-to-edge dark blue icons from:', inputPath);
 
-  // 1. Standard 512x512
+  // Background color rgb(5, 21, 46) -> #05152e
+  const bgColor = { r: 5, g: 21, b: 46, alpha: 1 };
+
+  // 1. Standard full-bleed 512x512
   await sharp(inputPath)
     .resize(512, 512, { fit: 'cover' })
     .png({ quality: 100 })
     .toFile(path.join(publicDir, 'pwa-512x512.png'));
   console.log('✓ Created pwa-512x512.png');
 
-  // 2. Standard 192x192
+  // 2. Standard full-bleed 192x192
   await sharp(inputPath)
     .resize(192, 192, { fit: 'cover' })
     .png({ quality: 100 })
@@ -38,16 +41,16 @@ async function processIcons() {
     .toFile(path.join(publicDir, 'apple-touch-icon.png'));
   console.log('✓ Created apple-touch-icon.png');
 
-  // 4. Favicon 48x48 / 64x64
+  // 4. Favicon 64x64
   await sharp(inputPath)
     .resize(64, 64, { fit: 'cover' })
     .png({ quality: 100 })
     .toFile(path.join(publicDir, 'favicon.ico'));
   console.log('✓ Created favicon.ico');
 
-  // 5. Maskable 512x512: Padded with deep dark blue background (#070b14) so Android circular/squircle cropping doesn't cut the TradeSizer text or elements
-  const innerResized = await sharp(inputPath)
-    .resize(420, 420, { fit: 'cover' })
+  // 5. Maskable 512x512 with safe-zone on solid dark blue canvas
+  const inner512 = await sharp(inputPath)
+    .resize(410, 410, { fit: 'cover' })
     .toBuffer();
 
   await sharp({
@@ -55,21 +58,40 @@ async function processIcons() {
       width: 512,
       height: 512,
       channels: 4,
-      background: { r: 7, g: 11, b: 20, alpha: 1 },
+      background: bgColor,
     },
   })
-    .composite([{ input: innerResized, gravity: 'center' }])
+    .composite([{ input: inner512, gravity: 'center' }])
     .png({ quality: 100 })
     .toFile(path.join(publicDir, 'pwa-maskable-512x512.png'));
-  console.log('✓ Created pwa-maskable-512x512.png (with safe zone padding for centered text)');
+  console.log('✓ Created pwa-maskable-512x512.png');
 
-  // Also create icon.png for general links
+  // 6. Maskable 192x192 with safe-zone on solid dark blue canvas
+  const inner192 = await sharp(inputPath)
+    .resize(154, 154, { fit: 'cover' })
+    .toBuffer();
+
+  await sharp({
+    create: {
+      width: 192,
+      height: 192,
+      channels: 4,
+      background: bgColor,
+    },
+  })
+    .composite([{ input: inner192, gravity: 'center' }])
+    .png({ quality: 100 })
+    .toFile(path.join(publicDir, 'pwa-maskable-192x192.png'));
+  console.log('✓ Created pwa-maskable-192x192.png');
+
+  // 7. General icon.png
   await sharp(inputPath)
     .resize(512, 512, { fit: 'cover' })
     .png({ quality: 100 })
     .toFile(path.join(publicDir, 'icon.png'));
+  console.log('✓ Created icon.png');
 
-  console.log('All icons generated successfully!');
+  console.log('All seamless dark-blue icons generated successfully with ZERO white corners!');
 }
 
 processIcons().catch((err) => {
