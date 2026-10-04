@@ -103,6 +103,18 @@ function getInitialSavedData(): SavedSessionData | null {
     if (parsed && parsed.settings && (!parsed.activeLoss || parsed.activeLoss <= 0)) {
       parsed.settings.recoveryStepsCount = 1;
     }
+    // Auto-fix any history trades where walletYieldAdded was 0
+    if (parsed && Array.isArray(parsed.tradeHistory) && parsed.tradeHistory.length > 0) {
+      let totalYield = 0;
+      for (const t of parsed.tradeHistory) {
+        if (!t.walletYieldAdded || t.walletYieldAdded <= 0) {
+          t.walletYieldAdded = Number(((t.tradeAmount * 0.15).toFixed(2)));
+        }
+        totalYield += t.walletYieldAdded;
+      }
+      parsed.regularProfitWallet = Number(totalYield.toFixed(2));
+      parsed.lifetimeYieldEarned = Number(totalYield.toFixed(2));
+    }
     return parsed;
   } catch {
     return null;
@@ -311,8 +323,8 @@ export const TradeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       let lossAfter = activeLoss;
       let calculatedPnL = 0;
 
-      // Regular Profit Wallet earns yield on EVERY trade (WIN and LOSS dono me hoga):
       const safeYieldRate = Number(settings.yieldRatePercent) || 15;
+      // Regular Profit Wallet earns 15% yield on EVERY trade (both WIN and LOSS):
       const walletYieldAdded = Number(((amount * (safeYieldRate / 100)).toFixed(2)));
 
       if (walletYieldAdded > 0) {
@@ -325,7 +337,10 @@ export const TradeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         calculatedPnL = actualPnL !== undefined ? -Math.abs(actualPnL) : -amount;
         setTradingCapitalState((prev) => Number((prev + calculatedPnL).toFixed(2)));
 
-        lossAfter = Number((lossBefore + Math.abs(calculatedPnL)).toFixed(2));
+        // Deficit to recover includes the lost trade amount + the wallet yield credited:
+        const totalDeficitToAdd = Number((Math.abs(calculatedPnL) + walletYieldAdded).toFixed(2));
+
+        lossAfter = Number((lossBefore + totalDeficitToAdd).toFixed(2));
         setActiveLoss(lossAfter);
         setInitialLoss((prev) => Math.max(prev, lossAfter));
         setConsecutiveLossCount((prev) => prev + 1);
@@ -351,13 +366,15 @@ export const TradeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         // Advance to next recovery step (first loss is step 0)
         setCurrentStepIndex((prev) => (lossBefore === 0 ? 0 : prev + 1));
       } else {
-        // WIN: Total real payout from broker
+        // WIN: Total real payout paid by broker (e.g. 72.00)
         const totalWinPayout =
           actualPnL !== undefined
             ? Math.abs(actualPnL)
             : Number((amount * settings.riskRewardRatio).toFixed(2));
 
         calculatedPnL = totalWinPayout;
+
+        // Credit capital with full broker payout:
         setTradingCapitalState((prev) => Number((prev + totalWinPayout).toFixed(2)));
 
         if (activeLoss > 0) {

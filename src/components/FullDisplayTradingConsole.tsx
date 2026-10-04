@@ -14,6 +14,7 @@ import {
   CheckCircle2,
   RefreshCw,
   Info,
+  Target,
 } from 'lucide-react';
 
 export const FullDisplayTradingConsole: React.FC = () => {
@@ -118,10 +119,10 @@ export const FullDisplayTradingConsole: React.FC = () => {
     ? (recommendation.stepLossTarget || Math.round(activeLoss / (settings.recoveryStepsCount || 1)))
     : 0;
 
-  // Wallet extra profit is ALWAYS based on the Trade Amount:
+  // Wallet extra profit (15% yield rate):
   const estimatedYield = Number(((numericTradeAmount * (Number(settings.yieldRatePercent) / 100)).toFixed(2)));
 
-  // Target profit (R:R): Full broker profit on trade = Trade Amount × Broker Payout Rate
+  // Target profit (R:R): Full broker payout on trade (e.g. 55 at 85% = 46.75)
   const estimatedTRProfit = totalWinPayout;
 
   // Handle saving manually reduced/adjusted loss (e.g. 10 -> 7 or 8)
@@ -251,8 +252,10 @@ export const FullDisplayTradingConsole: React.FC = () => {
                   inputMode="decimal"
                   value={lossInput}
                   onChange={(e) => setLossInput(e.target.value)}
+                  onFocus={(e) => e.target.select()}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') handleSaveLoss();
+                    if (e.key === 'Escape') setIsEditingLoss(false);
                   }}
                   className="w-16 bg-transparent text-amber-300 font-mono font-bold text-xs focus:outline-none"
                   placeholder="7"
@@ -506,23 +509,42 @@ export const FullDisplayTradingConsole: React.FC = () => {
       </div>
 
       {/* 4. REAL MONEY METRICS STRIP: Clean 2-Box Split (Target Profit + Wallet Profit) */}
-      <div className="bg-[#070d18] p-2.5 sm:p-3 rounded-xl border border-slate-800/80">
+      <div className={`p-2.5 sm:p-3 rounded-xl border ${isDark ? 'bg-[#070d18] border-slate-800/80' : 'bg-slate-50 border-slate-200'}`}>
         <div className="grid grid-cols-2 gap-2.5 text-center font-mono">
-          <div className="bg-emerald-950/20 p-2 sm:p-2.5 rounded-lg border border-emerald-500/20">
-            <div className="text-[10px] text-emerald-400 uppercase font-bold tracking-wider">
-              {language === 'hi' ? 'टारगेट लाभ (R:R)' : 'Target Profit (R:R)'}
+          {/* Target Profit Card (R:R) */}
+          <div className={`p-2.5 rounded-xl border transition-all ${
+            isDark
+              ? 'bg-emerald-950/30 border-emerald-500/25 text-emerald-300'
+              : 'bg-emerald-50 border-emerald-200 text-emerald-900 shadow-xs'
+          }`}>
+            <div className={`text-[10px] uppercase font-bold tracking-wider flex items-center justify-center gap-1 ${
+              isDark ? 'text-emerald-400' : 'text-emerald-700'
+            }`}>
+              <Target className={`w-3.5 h-3.5 shrink-0 ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`} />
+              <span>{language === 'hi' ? 'टारगेट लाभ (R:R)' : 'Target Profit (R:R)'}</span>
             </div>
-            <div className="text-sm sm:text-base font-black text-emerald-300 tabular-nums mt-0.5">
-              +{currencyFormat(totalWinPayout)}
+            <div className={`text-base sm:text-lg font-black tabular-nums mt-0.5 ${
+              isDark ? 'text-emerald-300' : 'text-emerald-600'
+            }`}>
+              +{currencyFormat(estimatedTRProfit)}
             </div>
           </div>
 
-          <div className="bg-cyan-950/20 p-2 sm:p-2.5 rounded-lg border border-cyan-500/20">
-            <div className="text-[10px] text-cyan-400 uppercase font-bold tracking-wider flex items-center justify-center gap-1">
-              <Coins className="w-3.5 h-3.5 shrink-0 text-cyan-400" />
+          {/* Wallet Profit Card (Yield) */}
+          <div className={`p-2.5 rounded-xl border transition-all ${
+            isDark
+              ? 'bg-cyan-950/30 border-cyan-500/25 text-cyan-300'
+              : 'bg-cyan-50 border-cyan-200 text-cyan-900 shadow-xs'
+          }`}>
+            <div className={`text-[10px] uppercase font-bold tracking-wider flex items-center justify-center gap-1 ${
+              isDark ? 'text-cyan-400' : 'text-cyan-700'
+            }`}>
+              <Coins className={`w-3.5 h-3.5 shrink-0 ${isDark ? 'text-cyan-400' : 'text-cyan-600'}`} />
               <span>{language === 'hi' ? `वॉलेट लाभ (${settings.yieldRatePercent}%)` : `Wallet Profit (${settings.yieldRatePercent}%)`}</span>
             </div>
-            <div className="text-sm sm:text-base font-black text-cyan-300 tabular-nums mt-0.5">
+            <div className={`text-base sm:text-lg font-black tabular-nums mt-0.5 ${
+              isDark ? 'text-cyan-300' : 'text-cyan-600'
+            }`}>
               +{currencyFormat(estimatedYield)}
             </div>
           </div>

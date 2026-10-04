@@ -155,15 +155,16 @@ body.light-theme [class*="text-cyan-500"] {
 }
 
 /* Emerald Highlights */
-body.light-theme [class*="text-emerald-400"],
-body.light-theme [class*="text-emerald-300"] {
-  color: #059669 !important;
-}
-
-body.light-theme [class*="bg-emerald-500/20"],
-body.light-theme [class*="bg-emerald-500/15"] {
+body.light-theme [class*="bg-emerald-950"],
+body.light-theme [class*="bg-emerald-500/10"],
+body.light-theme [class*="bg-emerald-500/15"],
+body.light-theme [class*="bg-emerald-500/20"] {
   background-color: #ecfdf5 !important;
   border-color: #a7f3d0 !important;
+}
+
+body.light-theme [class*="text-emerald-400"],
+body.light-theme [class*="text-emerald-300"] {
   color: #047857 !important;
 }
 

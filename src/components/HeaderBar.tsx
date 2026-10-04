@@ -30,13 +30,14 @@ export const HeaderBar: React.FC = () => {
   } = useTrade();
 
   const [isEditingCapital, setIsEditingCapital] = useState(false);
-  const [tempCapital, setTempCapital] = useState<number>(tradingCapital);
+  const [tempCapital, setTempCapital] = useState<string>(String(tradingCapital));
   const [isResetModalOpen, setIsResetModalOpen] = useState(false);
   const [resetCapitalInput, setResetCapitalInput] = useState<string>(String(tradingCapital || 10000));
 
   const handleSaveCapital = () => {
-    if (tempCapital > 0) {
-      setTradingCapital(tempCapital);
+    const val = parseFloat(tempCapital);
+    if (!isNaN(val) && val > 0) {
+      setTradingCapital(val);
       setIsEditingCapital(false);
     }
   };
@@ -95,23 +96,40 @@ export const HeaderBar: React.FC = () => {
                 {isEditingCapital ? (
                   <div className="flex items-center gap-1">
                     <input
-                      type="number"
+                      type="text"
+                      inputMode="decimal"
                       value={tempCapital}
-                      onChange={(e) => setTempCapital(Number(e.target.value))}
-                      className="w-16 sm:w-20 px-1 py-0.5 bg-slate-800 border border-slate-700 rounded text-white text-xs font-bold font-mono"
+                      onChange={(e) => setTempCapital(e.target.value)}
+                      onFocus={(e) => e.target.select()}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') handleSaveCapital();
+                        if (e.key === 'Escape') setIsEditingCapital(false);
+                      }}
+                      className="w-16 sm:w-20 px-1 py-0.5 bg-slate-800 border border-slate-600 rounded text-white text-xs font-bold font-mono focus:outline-none focus:border-emerald-500"
+                      placeholder="1000"
                       autoFocus
                     />
                     <button
+                      type="button"
                       onClick={handleSaveCapital}
                       className="p-1 rounded bg-emerald-500 text-slate-950 hover:bg-emerald-400 cursor-pointer"
+                      title="Save"
                     >
                       <Check className="w-3 h-3 stroke-[3]" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setIsEditingCapital(false)}
+                      className="p-1 rounded bg-slate-700 text-slate-300 hover:bg-slate-600 cursor-pointer"
+                      title="Cancel"
+                    >
+                      <X className="w-3 h-3" />
                     </button>
                   </div>
                 ) : (
                   <button
                     onClick={() => {
-                      setTempCapital(tradingCapital);
+                      setTempCapital(String(tradingCapital));
                       setIsEditingCapital(true);
                     }}
                     className="font-bold text-white hover:text-emerald-400 transition-colors tabular-nums cursor-pointer text-xs sm:text-sm whitespace-nowrap"
