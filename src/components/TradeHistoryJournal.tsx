@@ -3,7 +3,17 @@ import { useTrade } from '../context/TradeContext';
 import { ArrowUpRight, ArrowDownRight, Coins, ScrollText } from 'lucide-react';
 
 export const TradeHistoryJournal: React.FC = () => {
-  const { tradeHistory, language, currencyFormat, theme } = useTrade();
+  const {
+    tradeHistory,
+    language,
+    currencyFormat,
+    theme,
+    totalTradesCount,
+    totalWinsCount,
+    totalLossCount,
+    totalTurnover,
+    winRatePercent,
+  } = useTrade();
   const [filter, setFilter] = useState<'ALL' | 'WIN' | 'LOSS'>('ALL');
 
   const isDark = theme === 'dark';
@@ -95,6 +105,52 @@ export const TradeHistoryJournal: React.FC = () => {
                 {m}
               </button>
             ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Real-time Performance Summary: Turnover, Win Rate, Total Trades */}
+      <div
+        className={`grid grid-cols-3 gap-2 p-2.5 sm:p-3 border-b font-mono text-center text-xs ${
+          isDark ? 'bg-[#080d19] border-slate-800' : 'bg-slate-50 border-slate-200'
+        }`}
+      >
+        <div
+          className={`p-2 rounded-xl border ${
+            isDark ? 'bg-[#0d1527] border-slate-800' : 'bg-white border-slate-200 shadow-xs'
+          }`}
+        >
+          <div className="text-[10px] text-slate-400 uppercase font-semibold tracking-wider">
+            {language === 'hi' ? 'कुल टर्नओवर' : 'Total Turnover'}
+          </div>
+          <div className="text-xs sm:text-sm font-black text-amber-400 tabular-nums mt-0.5">
+            {currencyFormat(totalTurnover)}
+          </div>
+        </div>
+
+        <div
+          className={`p-2 rounded-xl border ${
+            isDark ? 'bg-[#0d1527] border-slate-800' : 'bg-white border-slate-200 shadow-xs'
+          }`}
+        >
+          <div className="text-[10px] text-slate-400 uppercase font-semibold tracking-wider">
+            {language === 'hi' ? 'विन रेट (Win Rate)' : 'Win Rate'}
+          </div>
+          <div className="text-xs sm:text-sm font-black text-emerald-400 tabular-nums mt-0.5">
+            {winRatePercent}%
+          </div>
+        </div>
+
+        <div
+          className={`p-2 rounded-xl border ${
+            isDark ? 'bg-[#0d1527] border-slate-800' : 'bg-white border-slate-200 shadow-xs'
+          }`}
+        >
+          <div className="text-[10px] text-slate-400 uppercase font-semibold tracking-wider">
+            {language === 'hi' ? 'कुल ट्रेड्स' : 'Total Trades'}
+          </div>
+          <div className="text-xs sm:text-sm font-black text-cyan-300 tabular-nums mt-0.5">
+            {totalTradesCount} <span className="text-[10px] font-normal text-slate-400">({totalWinsCount}W/{totalLossCount}L)</span>
           </div>
         </div>
       </div>

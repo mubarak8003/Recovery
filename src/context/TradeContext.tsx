@@ -32,6 +32,10 @@ interface TradeContextType {
   language: Language;
   consecutiveLossCount: number;
   totalLossCount: number;
+  totalTradesCount: number;
+  totalWinsCount: number;
+  totalTurnover: number;
+  winRatePercent: number;
   recommendation: NextTradeRecommendation;
   stepDetails: RecoveryStepDetail[];
   customTradeAmountOverride: number | null;
@@ -71,7 +75,7 @@ const DEFAULT_SETTINGS: Settings = {
   riskRewardRatio: 1.0, // 1:1 R:R default for direct loss divide
   maxRiskPercentCap: 15, // Max 15% risk cap in recovery
   strategy: 'SMART_LADDER',
-  recoveryStepsCount: 2, // Default 2 martaba me recovery
+  recoveryStepsCount: 1, // Default Divide by 1 se start hoga
 };
 
 const STORAGE_KEY = 'tradesizer_saved_session_v2';
@@ -95,7 +99,11 @@ function getInitialSavedData(): SavedSessionData | null {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return null;
-    return JSON.parse(raw);
+    const parsed = JSON.parse(raw);
+    if (parsed && parsed.settings && (!parsed.activeLoss || parsed.activeLoss <= 0)) {
+      parsed.settings.recoveryStepsCount = 1;
+    }
+    return parsed;
   } catch {
     return null;
   }
@@ -236,11 +244,35 @@ export const TradeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     tradeHistory,
   ]);
 
+  const totalTradesCount = tradeHistory.length;
+  const totalWinsCount = useMemo(
+    () => tradeHistory.filter((t) => t.result === 'WIN').length,
+    [tradeHistory]
+  );
+  const totalTurnover = useMemo(
+    () =>
+      Number(
+        tradeHistory
+          .reduce((acc, curr) => acc + (Number(curr.tradeAmount) || 0), 0)
+          .toFixed(2)
+      ),
+    [tradeHistory]
+  );
+  const winRatePercent = useMemo(
+    () =>
+      totalTradesCount > 0
+        ? Number(((totalWinsCount / totalTradesCount) * 100).toFixed(1))
+        : 0,
+    [totalWinsCount, totalTradesCount]
+  );
+
   const currencyFormat = useCallback(
     (amount: number) => {
       const sym = settings.currencySymbol;
-      return `${sym}${amount.toLocaleString('en-IN', {
-        minimumFractionDigits: 0,
+      const num = Number(amount) || 0;
+      const hasDecimals = Math.abs(num % 1) > 0.0001;
+      return `${sym}${num.toLocaleString('en-IN', {
+        minimumFractionDigits: hasDecimals ? 2 : 0,
         maximumFractionDigits: 2,
       })}`;
     },
@@ -278,7 +310,16 @@ export const TradeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       const lossBefore = activeLoss;
       let lossAfter = activeLoss;
       let calculatedPnL = 0;
-      let walletYieldAdded = 0;
+
+      // Regular Profit Wallet earns yield on EVERY trade (WIN and LOSS dono me hoga):
+      const safeYieldRate = Number(settings.yieldRatePercent) || 15;
+      const walletYieldAdded = Number(((amount * (safeYieldRate / 100)).toFixed(2)));
+
+      if (walletYieldAdded > 0) {
+        setRegularProfitWallet((prev) => Number((prev + walletYieldAdded).toFixed(2)));
+        setLifetimeYieldEarned((prev) => Number((prev + walletYieldAdded).toFixed(2)));
+        setRecentYieldToast({ amount: walletYieldAdded, id: Date.now() });
+      }
 
       if (result === 'LOSS') {
         calculatedPnL = actualPnL !== undefined ? -Math.abs(actualPnL) : -amount;
@@ -290,8 +331,15 @@ export const TradeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         setConsecutiveLossCount((prev) => prev + 1);
         setTotalLossCount((prev) => prev + 1);
 
-        // Advance Divide Factor dynamically on forward loss (+1 from current manual setting, up to 100)
+        // Advance Divide Factor dynamically on forward loss:
+        // "By default pahla loss hai to Divide Loss by How Many Parts pe bhi start me 1 se chale"
         setSettings((prev) => {
+          if (lossBefore === 0) {
+            return {
+              ...prev,
+              recoveryStepsCount: 1,
+            };
+          }
           const currentFactor = prev.recoveryStepsCount || 1;
           const nextFactor = Math.min(100, currentFactor + 1);
           return {
@@ -300,8 +348,8 @@ export const TradeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
           };
         });
 
-        // Advance to next recovery step
-        setCurrentStepIndex((prev) => prev + 1);
+        // Advance to next recovery step (first loss is step 0)
+        setCurrentStepIndex((prev) => (lossBefore === 0 ? 0 : prev + 1));
       } else {
         // WIN: Total real payout from broker
         const totalWinPayout =
@@ -309,17 +357,6 @@ export const TradeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             ? Math.abs(actualPnL)
             : Number((amount * settings.riskRewardRatio).toFixed(2));
 
-        // Extra profit for wallet earned on WIN
-        walletYieldAdded = Number(((amount * (settings.yieldRatePercent / 100)).toFixed(2)));
-
-        // Credit extra profit to safe wallet
-        if (walletYieldAdded > 0) {
-          setRegularProfitWallet((prev) => Number((prev + walletYieldAdded).toFixed(2)));
-          setLifetimeYieldEarned((prev) => Number((prev + walletYieldAdded).toFixed(2)));
-          setRecentYieldToast({ amount: walletYieldAdded, id: Date.now() });
-        }
-
-        // Payout trade ke hisab se pura milega: Full payout credited to trading capital
         calculatedPnL = totalWinPayout;
         setTradingCapitalState((prev) => Number((prev + totalWinPayout).toFixed(2)));
 
@@ -475,8 +512,10 @@ export const TradeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     setCustomTradeAmountOverride(null);
     if (val > 0) {
       setConsecutiveLossCount((prev) => (prev > 0 ? prev : 1));
+      setSettings((prev) => ({ ...prev, recoveryStepsCount: prev.recoveryStepsCount || 1 }));
     } else {
       setConsecutiveLossCount(0);
+      setSettings((prev) => ({ ...prev, recoveryStepsCount: 1 }));
     }
   }, []);
 
@@ -512,6 +551,10 @@ export const TradeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         currentStepIndex,
         consecutiveLossCount,
         totalLossCount,
+        totalTradesCount,
+        totalWinsCount,
+        totalTurnover,
+        winRatePercent,
         tradeHistory,
         settings,
         language,

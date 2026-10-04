@@ -60,21 +60,11 @@ export function calculateNextTradeRecommendation(
 
   // If there is NO active loss to recover (Normal Clean Trading)
   if (safeActiveLoss <= 0) {
-    // 1. TR target profit (e.g. 67 * 0.85 = 56.95)
-    const targetTRProfit = Number((baseTarget * effectiveRR).toFixed(2));
-    
-    // 2. Wallet target profit (e.g. 67 * 0.15 = 10.05)
-    const targetWalletProfit = Number(((baseTarget * (safeYieldRate / 100)).toFixed(2)));
-    
-    // 3. Total profit needed from broker so both TR and Wallet are fully paid:
-    const totalProfitNeeded = Number((targetTRProfit + targetWalletProfit).toFixed(2));
-
-    // 4. Trade size needed on broker: Total Profit / Effective RR
-    // Example: (56.95 + 10.05) / 0.85 = 67 / 0.85 = ₹79!
-    const suggestedTradeAmount = Math.max(
-      10,
-      Math.round(totalProfitNeeded / effectiveRR)
-    );
+    const baseTargetTrade = Math.max(10, Math.round((safeCapital * baseTradePercent) / 100));
+    const trProfitOnBase = Number((baseTargetTrade * effectiveRR).toFixed(2));
+    const walletProfitOnBase = Number(((baseTargetTrade * (safeYieldRate / 100)).toFixed(2)));
+    const totalProfitNeeded = Number((trProfitOnBase + walletProfitOnBase).toFixed(2));
+    const suggestedTradeAmount = Number((totalProfitNeeded / effectiveRR).toFixed(2));
 
     // Real payout broker will pay on this suggested amount:
     const totalWinPayout = Number((suggestedTradeAmount * effectiveRR).toFixed(2));
@@ -133,12 +123,18 @@ export function calculateNextTradeRecommendation(
     const factor = Number(stepFactors[i]) || 1;
     const portionLoss = basePortion * factor;
 
-    // "Wallet ki percent kam kyu use to trade amount hisaab se hoga"
-    // To cover BOTH portionLoss AND wallet yield on the trade amount:
-    // Trade * effectiveRR = portionLoss + Trade * (safeYieldRate / 100)
-    // Trade = portionLoss / (effectiveRR - safeYieldRate / 100)
+    // 1. Base recovery amount for loss portion: e.g. 50 / 0.70 = 71.42 -> 72
     const netRate = Math.max(0.1, Number((effectiveRR - safeYieldRate / 100).toFixed(4)));
-    let calculatedTrade = portionLoss / netRate;
+    const baseTargetTrade = Math.max(1, Math.ceil(portionLoss / netRate));
+
+    // 2. Target profit on base (61.20) + Wallet profit on base (10.80) = 72.00
+    const trProfitOnBase = Number((baseTargetTrade * effectiveRR).toFixed(2));
+    const walletProfitOnBase = Number(((baseTargetTrade * (safeYieldRate / 100)).toFixed(2)));
+    const totalProfitNeeded = Number((trProfitOnBase + walletProfitOnBase).toFixed(2));
+
+    // 3. Exact Suggested Trade on broker:
+    // e.g. 72.00 / 0.85 = 84.71 (or 84.70 exact unk)
+    let calculatedTrade = Number((totalProfitNeeded / effectiveRR).toFixed(2));
 
     // Strict NaN & Infinity Prevention
     if (isNaN(calculatedTrade) || !isFinite(calculatedTrade) || calculatedTrade <= 0) {
@@ -147,7 +143,7 @@ export function calculateNextTradeRecommendation(
 
     // Apply safety risk cap
     calculatedTrade = Math.min(calculatedTrade, maxSafeRisk);
-    calculatedTrade = Math.max(1, Math.round(calculatedTrade));
+    calculatedTrade = Math.max(1, calculatedTrade);
 
     // Payout is purely based on the calculated trade amount: Trade Amount × Effective RR
     const actualWinPayout = Number((calculatedTrade * effectiveRR).toFixed(2));

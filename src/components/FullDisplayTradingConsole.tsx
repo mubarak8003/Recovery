@@ -31,6 +31,11 @@ export const FullDisplayTradingConsole: React.FC = () => {
     recordTrade,
     tradingCapital,
     theme,
+    totalTradesCount,
+    totalWinsCount,
+    totalLossCount,
+    totalTurnover,
+    winRatePercent,
   } = useTrade();
 
   const isDark = theme === 'dark';
@@ -41,12 +46,45 @@ export const FullDisplayTradingConsole: React.FC = () => {
   const currentFactor = settings.recoveryStepsCount || 1;
   const effectiveRR = Math.max(0.1, Number(settings.riskRewardRatio) || 0.85);
 
-  const systemDividedAmount = useMemo(() => {
+  // Exact user formula:
+  // 1. Target Profit on base + 2. Wallet Profit on base = Total Needed (e.g. 61.20 + 10.80 = 72.00)
+  // 3. Trade on broker = Total Needed / effectiveRR (e.g. 72.00 / 0.85 = 84.71 exact unk)
+  const suggestionBreakdown = useMemo(() => {
+    const safeYieldRate = (Number(settings.yieldRatePercent) || 15) / 100;
     if (activeLoss > 0) {
-      return Math.max(1, Math.round((activeLoss / currentFactor) / effectiveRR));
+      const netRate = Math.max(0.10, Number((effectiveRR - safeYieldRate).toFixed(4)));
+      const baseTargetTrade = Math.max(1, Math.ceil((activeLoss / currentFactor) / netRate));
+      const trProfit = Number((baseTargetTrade * effectiveRR).toFixed(2));
+      const walletProfit = Number(((baseTargetTrade * safeYieldRate).toFixed(2)));
+      const totalNeeded = Number((trProfit + walletProfit).toFixed(2));
+      const exactAmount = Number((totalNeeded / effectiveRR).toFixed(2));
+      return {
+        baseTargetTrade,
+        trProfit,
+        walletProfit,
+        totalNeeded,
+        exactAmount,
+      };
     }
-    return Math.max(1, Math.round((tradingCapital * (settings.baseTradePercent || 2)) / 100));
-  }, [activeLoss, currentFactor, effectiveRR, tradingCapital, settings.baseTradePercent]);
+    const baseTargetTrade = Math.max(10, Math.round((tradingCapital * (settings.baseTradePercent || 2)) / 100));
+    const trProfit = Number((baseTargetTrade * effectiveRR).toFixed(2));
+    const walletProfit = Number(((baseTargetTrade * safeYieldRate).toFixed(2)));
+    const totalNeeded = Number((trProfit + walletProfit).toFixed(2));
+    const exactAmount = Number((totalNeeded / effectiveRR).toFixed(2));
+    return {
+      baseTargetTrade,
+      trProfit,
+      walletProfit,
+      totalNeeded,
+      exactAmount,
+    };
+  }, [activeLoss, currentFactor, effectiveRR, settings.yieldRatePercent, tradingCapital, settings.baseTradePercent]);
+
+  const systemDividedAmount = useMemo(() => {
+    const rec = Number(recommendation.amount);
+    if (!isNaN(rec) && isFinite(rec) && rec > 0) return rec;
+    return suggestionBreakdown.exactAmount;
+  }, [recommendation.amount, suggestionBreakdown.exactAmount]);
 
   // Local state for trade amount text - KHIALI / EMPTY BY DEFAULT so user types freely
   const [tradeAmountText, setTradeAmountText] = useState<string>('');
@@ -83,10 +121,8 @@ export const FullDisplayTradingConsole: React.FC = () => {
   // Wallet extra profit is ALWAYS based on the Trade Amount:
   const estimatedYield = Number(((numericTradeAmount * (Number(settings.yieldRatePercent) / 100)).toFixed(2)));
 
-  // Target profit:
-  const estimatedTRProfit = isRecovery
-    ? stepTargetLoss
-    : Number(Math.max(0, totalWinPayout - estimatedYield).toFixed(2));
+  // Target profit (R:R): Full broker profit on trade = Trade Amount × Broker Payout Rate
+  const estimatedTRProfit = totalWinPayout;
 
   // Handle saving manually reduced/adjusted loss (e.g. 10 -> 7 or 8)
   const handleSaveLoss = () => {
@@ -349,9 +385,17 @@ export const FullDisplayTradingConsole: React.FC = () => {
           <span className="text-xl sm:text-2xl font-black tracking-tight tabular-nums">
             {currencyFormat(systemDividedAmount)}
           </span>
-          {isRecovery && (
+          {isRecovery ? (
             <span className={`text-xs font-semibold ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-              ({currencyFormat(activeLoss)} ÷ {currentFactor} भाग)
+              {language === 'hi'
+                ? `(${currencyFormat(suggestionBreakdown.trProfit)} R:R + ${currencyFormat(suggestionBreakdown.walletProfit)} वॉलेट = ${currencyFormat(suggestionBreakdown.totalNeeded)} पेआउट)`
+                : `(${currencyFormat(suggestionBreakdown.trProfit)} R:R + ${currencyFormat(suggestionBreakdown.walletProfit)} Wallet = ${currencyFormat(suggestionBreakdown.totalNeeded)} Payout Target)`}
+            </span>
+          ) : (
+            <span className={`text-xs font-semibold ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+              {language === 'hi'
+                ? `(${currencyFormat(suggestionBreakdown.trProfit)} R:R + ${currencyFormat(suggestionBreakdown.walletProfit)} वॉलेट = ${currencyFormat(suggestionBreakdown.totalNeeded)} पेआउट)`
+                : `(${currencyFormat(suggestionBreakdown.trProfit)} R:R + ${currencyFormat(suggestionBreakdown.walletProfit)} Wallet = ${currencyFormat(suggestionBreakdown.totalNeeded)} Payout Target)`}
             </span>
           )}
         </div>
@@ -461,34 +505,25 @@ export const FullDisplayTradingConsole: React.FC = () => {
         </div>
       </div>
 
-      {/* 4. REAL MONEY METRICS STRIP: Both TR and Wallet funded by broker payout */}
-      <div className="bg-[#070d18] p-3 rounded-xl border border-slate-800/80 space-y-2">
-        <div className="grid grid-cols-3 gap-2 text-center font-mono">
-          <div>
-            <div className="text-[10px] text-slate-400 uppercase">
+      {/* 4. REAL MONEY METRICS STRIP: Clean 2-Box Split (Target Profit + Wallet Profit) */}
+      <div className="bg-[#070d18] p-2.5 sm:p-3 rounded-xl border border-slate-800/80">
+        <div className="grid grid-cols-2 gap-2.5 text-center font-mono">
+          <div className="bg-emerald-950/20 p-2 sm:p-2.5 rounded-lg border border-emerald-500/20">
+            <div className="text-[10px] text-emerald-400 uppercase font-bold tracking-wider">
               {language === 'hi' ? 'टारगेट लाभ (R:R)' : 'Target Profit (R:R)'}
             </div>
-            <div className="text-xs sm:text-sm font-bold text-emerald-400 tabular-nums">
-              +{currencyFormat(estimatedTRProfit)}
-            </div>
-          </div>
-
-          <div className="border-x border-slate-800">
-            <div className="text-[10px] text-cyan-400 uppercase flex items-center justify-center gap-1">
-              <Coins className="w-3 h-3 shrink-0" />
-              <span>{language === 'hi' ? 'वॉलेट लाभ' : 'Wallet Profit'}</span>
-            </div>
-            <div className="text-xs sm:text-sm font-bold text-cyan-300 tabular-nums">
-              +{currencyFormat(estimatedYield)}
-            </div>
-          </div>
-
-          <div>
-            <div className="text-[10px] text-slate-400 uppercase">
-              {language === 'hi' ? 'कुल पेआउट (Payout)' : 'Total Payout'}
-            </div>
-            <div className="text-xs sm:text-sm font-bold text-amber-300 tabular-nums">
+            <div className="text-sm sm:text-base font-black text-emerald-300 tabular-nums mt-0.5">
               +{currencyFormat(totalWinPayout)}
+            </div>
+          </div>
+
+          <div className="bg-cyan-950/20 p-2 sm:p-2.5 rounded-lg border border-cyan-500/20">
+            <div className="text-[10px] text-cyan-400 uppercase font-bold tracking-wider flex items-center justify-center gap-1">
+              <Coins className="w-3.5 h-3.5 shrink-0 text-cyan-400" />
+              <span>{language === 'hi' ? `वॉलेट लाभ (${settings.yieldRatePercent}%)` : `Wallet Profit (${settings.yieldRatePercent}%)`}</span>
+            </div>
+            <div className="text-sm sm:text-base font-black text-cyan-300 tabular-nums mt-0.5">
+              +{currencyFormat(estimatedYield)}
             </div>
           </div>
         </div>
@@ -525,6 +560,40 @@ export const FullDisplayTradingConsole: React.FC = () => {
             -{currencyFormat(numericTradeAmount)}
           </div>
         </button>
+      </div>
+
+      {/* Real-time Session Performance Stats: Turnover, Win Rate, Total Trades */}
+      <div
+        className={`grid grid-cols-3 gap-2 p-2 sm:p-2.5 rounded-xl border font-mono text-center text-xs ${
+          isDark ? 'bg-[#070d18] border-slate-800/90' : 'bg-slate-50 border-slate-200 shadow-xs'
+        }`}
+      >
+        <div className="flex flex-col items-center justify-center">
+          <span className="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">
+            {language === 'hi' ? 'कुल टर्नओवर' : 'Turnover'}
+          </span>
+          <span className="text-xs sm:text-sm font-black text-amber-400 tabular-nums mt-0.5">
+            {currencyFormat(totalTurnover)}
+          </span>
+        </div>
+
+        <div className={`flex flex-col items-center justify-center border-x ${isDark ? 'border-slate-800' : 'border-slate-200'}`}>
+          <span className="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">
+            {language === 'hi' ? 'विन रेट' : 'Win Rate'}
+          </span>
+          <span className="text-xs sm:text-sm font-black text-emerald-400 tabular-nums mt-0.5">
+            {winRatePercent}%
+          </span>
+        </div>
+
+        <div className="flex flex-col items-center justify-center">
+          <span className="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">
+            {language === 'hi' ? 'कुल ट्रेड्स' : 'Trades'}
+          </span>
+          <span className="text-xs sm:text-sm font-black text-cyan-300 tabular-nums mt-0.5">
+            {totalTradesCount} <span className="text-[10px] font-normal text-slate-400">({totalWinsCount}W/{totalLossCount}L)</span>
+          </span>
+        </div>
       </div>
 
       {/* Optional Note input */}

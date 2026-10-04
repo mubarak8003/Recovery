@@ -59,9 +59,11 @@ export const HeaderBar: React.FC = () => {
         <div className="max-w-[1440px] mx-auto px-2 sm:px-6 h-14 sm:h-16 flex items-center justify-between gap-1.5 sm:gap-4 overflow-x-auto scrollbar-none overscroll-x-contain">
           {/* Brand Zone */}
           <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
-            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-gradient-to-tr from-emerald-500 to-cyan-500 flex items-center justify-center shadow-md shadow-emerald-500/20 shrink-0">
-              <TrendingUp className="w-4 h-4 text-slate-950 stroke-[2.5]" />
-            </div>
+            <img
+              src="/icon.png"
+              alt="TradeSizer Logo"
+              className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg shadow-md shadow-emerald-500/20 shrink-0 object-cover border border-emerald-500/30"
+            />
             <div className="flex items-baseline gap-2 overflow-hidden">
               <span className="text-sm sm:text-lg font-extrabold tracking-tight text-white whitespace-nowrap">
                 TradeSizer
