@@ -597,32 +597,40 @@ export const FullDisplayTradingConsole: React.FC = () => {
 
       {/* 5. COMPACT, CLEAN ACTION BUTTONS: WIN & LOSS */}
       <div className="grid grid-cols-2 gap-2.5 pt-0.5">
-        {/* COMPACT WIN BUTTON */}
+        {/* COMPACT WIN BUTTON (Very Light / Subtle Soft Styling) */}
         <button
           type="button"
           onClick={() => handleExecuteTrade('WIN')}
-          className="py-2.5 px-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-bold flex flex-col items-center justify-center shadow-md shadow-emerald-500/20 active:scale-[0.98] transition-all cursor-pointer min-w-0"
+          className={`py-2.5 px-2 rounded-xl font-bold flex flex-col items-center justify-center border active:scale-[0.98] transition-all cursor-pointer min-w-0 ${
+            isDark
+              ? 'bg-emerald-500/15 hover:bg-emerald-500/25 border-emerald-500/35 text-emerald-300 shadow-sm shadow-emerald-950/40'
+              : 'bg-emerald-50 hover:bg-emerald-100/80 border-emerald-200 text-emerald-700 shadow-xs'
+          }`}
         >
           <div className="flex items-center gap-1 text-xs sm:text-sm font-extrabold uppercase tracking-wide">
-            <ArrowUpRight className="w-4 h-4 stroke-[3] shrink-0" />
+            <ArrowUpRight className="w-4 h-4 stroke-[2.5] shrink-0 text-emerald-400" />
             <span>{language === 'hi' ? 'WIN (जीत)' : 'WIN'}</span>
           </div>
-          <div className="font-mono font-black text-sm sm:text-base leading-tight mt-0.5 truncate max-w-full">
+          <div className="font-mono font-black text-sm sm:text-base leading-tight mt-0.5 truncate max-w-full text-emerald-400">
             +{currencyFormat(totalWinPayout)}
           </div>
         </button>
 
-        {/* COMPACT LOSS BUTTON */}
+        {/* COMPACT LOSS BUTTON (Very Light / Subtle Soft Styling) */}
         <button
           type="button"
           onClick={() => handleExecuteTrade('LOSS')}
-          className="py-2.5 px-2 rounded-xl bg-gradient-to-r from-rose-500 to-red-600 hover:from-rose-400 hover:to-red-500 text-white font-bold flex flex-col items-center justify-center shadow-md shadow-rose-500/20 active:scale-[0.98] transition-all cursor-pointer min-w-0"
+          className={`py-2.5 px-2 rounded-xl font-bold flex flex-col items-center justify-center border active:scale-[0.98] transition-all cursor-pointer min-w-0 ${
+            isDark
+              ? 'bg-rose-500/15 hover:bg-rose-500/25 border-rose-500/35 text-rose-300 shadow-sm shadow-rose-950/40'
+              : 'bg-rose-50 hover:bg-rose-100/80 border-rose-200 text-rose-700 shadow-xs'
+          }`}
         >
           <div className="flex items-center gap-1 text-xs sm:text-sm font-extrabold uppercase tracking-wide">
-            <ArrowDownRight className="w-4 h-4 stroke-[3] shrink-0" />
+            <ArrowDownRight className="w-4 h-4 stroke-[2.5] shrink-0 text-rose-400" />
             <span>{language === 'hi' ? 'LOSS (लॉस)' : 'LOSS'}</span>
           </div>
-          <div className="font-mono font-black text-sm sm:text-base leading-tight mt-0.5 truncate max-w-full">
+          <div className="font-mono font-black text-sm sm:text-base leading-tight mt-0.5 truncate max-w-full text-rose-400">
             -{currencyFormat(numericTradeAmount)}
           </div>
         </button>
