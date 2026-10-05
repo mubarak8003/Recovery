@@ -378,17 +378,14 @@ export const FullDisplayTradingConsole: React.FC = () => {
         </div>
       )}
 
-      {/* 3A. SYSTEM DIVIDED TRADE AMOUNT SUGGESTION (Alag Dikhayein - Clean Display) */}
-      <div
-        className={`p-2.5 sm:p-3 rounded-xl border flex flex-wrap items-center justify-between gap-2 transition-colors ${
-          isDark
-            ? 'bg-[#080e1d] border-amber-500/40 text-amber-300'
-            : 'bg-amber-50/90 border-amber-300 text-amber-900'
-        }`}
-      >
-        <div className="flex items-center gap-2">
+      {/* 3A. SYSTEM DIVIDED TRADE AMOUNT SUGGESTION (Title Outside Card) */}
+      <div className="space-y-1.5">
+        {/* Title OUTSIDE Card */}
+        <div className="flex items-center gap-2 px-1">
           <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse shrink-0" />
-          <span className="text-[11px] font-mono font-bold uppercase tracking-wider">
+          <span className={`text-[11px] sm:text-xs font-mono font-bold uppercase tracking-wider ${
+            isDark ? 'text-amber-400' : 'text-amber-700'
+          }`}>
             {isRecovery
               ? language === 'hi'
                 ? 'सिस्टम सुझाया गया ट्रेड (DIVIDED SUGGESTION)'
@@ -399,23 +396,22 @@ export const FullDisplayTradingConsole: React.FC = () => {
           </span>
         </div>
 
-        <div className="flex items-baseline gap-2 font-mono">
+        {/* Card containing Amount and Formula Breakdown */}
+        <div
+          className={`p-2.5 sm:p-3 rounded-xl border flex flex-wrap items-baseline justify-between gap-2 font-mono transition-colors ${
+            isDark
+              ? 'bg-[#080e1d] border-amber-500/40 text-amber-300'
+              : 'bg-amber-50/90 border-amber-300 text-amber-900 shadow-xs'
+          }`}
+        >
           <span className="text-xl sm:text-2xl font-black tracking-tight tabular-nums">
             {currencyFormat(systemDividedAmount)}
           </span>
-          {isRecovery ? (
-            <span className={`text-xs font-semibold ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-              {language === 'hi'
-                ? `(${currencyFormat(suggestionBreakdown.trProfit)} R:R + ${currencyFormat(suggestionBreakdown.walletProfit)} वॉलेट = ${currencyFormat(suggestionBreakdown.totalNeeded)} पेआउट)`
-                : `(${currencyFormat(suggestionBreakdown.trProfit)} R:R + ${currencyFormat(suggestionBreakdown.walletProfit)} Wallet = ${currencyFormat(suggestionBreakdown.totalNeeded)} Payout Target)`}
-            </span>
-          ) : (
-            <span className={`text-xs font-semibold ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-              {language === 'hi'
-                ? `(${currencyFormat(suggestionBreakdown.trProfit)} R:R + ${currencyFormat(suggestionBreakdown.walletProfit)} वॉलेट = ${currencyFormat(suggestionBreakdown.totalNeeded)} पेआउट)`
-                : `(${currencyFormat(suggestionBreakdown.trProfit)} R:R + ${currencyFormat(suggestionBreakdown.walletProfit)} Wallet = ${currencyFormat(suggestionBreakdown.totalNeeded)} Payout Target)`}
-            </span>
-          )}
+          <span className={`text-xs font-semibold ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+            {language === 'hi'
+              ? `(${currencyFormat(suggestionBreakdown.trProfit)} R:R + ${currencyFormat(suggestionBreakdown.walletProfit)} वॉलेट = ${currencyFormat(suggestionBreakdown.totalNeeded)} पेआउट)`
+              : `(${currencyFormat(suggestionBreakdown.trProfit)} R:R + ${currencyFormat(suggestionBreakdown.walletProfit)} Wallet = ${currencyFormat(suggestionBreakdown.totalNeeded)} Payout Target)`}
+          </span>
         </div>
       </div>
 
@@ -466,24 +462,6 @@ export const FullDisplayTradingConsole: React.FC = () => {
           />
         </div>
 
-        {/* Quick Steppers: -50, -10, +10, +50, +100 */}
-        <div className="flex items-center justify-between gap-1.5 text-xs font-mono">
-          {[-50, -10, 10, 50, 100].map((delta) => (
-            <button
-              key={delta}
-              type="button"
-              onClick={() => handleStepDelta(delta)}
-              className={`flex-1 py-1.5 rounded-lg border font-bold cursor-pointer text-xs transition-colors text-center ${
-                isDark
-                  ? 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700/60'
-                  : 'bg-slate-100 hover:bg-slate-200 text-slate-800 border-slate-200'
-              }`}
-            >
-              {delta > 0 ? `+${delta}` : delta}
-            </button>
-          ))}
-        </div>
-
         {/* 3C. BROKER PAYOUT SELECTOR ("kyun ki kai bar payout different bhi aajata hai") */}
         <div
           className={`p-2 sm:p-2.5 rounded-xl border flex flex-wrap items-center justify-between gap-2 text-xs font-mono ${
@@ -523,48 +501,54 @@ export const FullDisplayTradingConsole: React.FC = () => {
         </div>
       </div>
 
-      {/* 4. REAL MONEY METRICS STRIP: Clean 2-Box Split (Target Profit + Wallet Profit) */}
+      {/* 4. REAL MONEY METRICS STRIP: Clean 2-Box Split with Labels Outside Cards */}
       <div className={`p-2.5 sm:p-3 rounded-xl border ${isDark ? 'bg-[#070d18] border-slate-800/80' : 'bg-slate-50 border-slate-200'}`}>
-        <div className="grid grid-cols-2 gap-2.5 text-center font-mono">
-          {/* Target Profit Card (R:R) */}
-          <div className={`p-2.5 rounded-xl border transition-all ${
-            isDark
-              ? 'bg-emerald-950/30 border-emerald-500/25 text-emerald-300'
-              : 'bg-emerald-50 border-emerald-200 text-emerald-900 shadow-xs'
-          }`}>
-            <div className={`text-[10px] uppercase font-bold tracking-wider flex items-center justify-center gap-1 ${
+        <div className="grid grid-cols-2 gap-2.5 font-mono">
+          {/* Column 1: Target Recovery / Target Profit */}
+          <div className="space-y-1">
+            <div className={`text-[10px] sm:text-[11px] uppercase font-bold tracking-wider flex items-center justify-center gap-1 text-center truncate ${
               isDark ? 'text-emerald-400' : 'text-emerald-700'
             }`}>
               <Target className={`w-3.5 h-3.5 shrink-0 ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`} />
-              <span>
+              <span className="truncate">
                 {isRecovery
                   ? (language === 'hi' ? 'बकाया रिकवरी (R:R)' : 'Target Recovery (R:R)')
                   : (language === 'hi' ? 'टारगेट लाभ (R:R)' : 'Target Profit (R:R)')}
               </span>
             </div>
-            <div className={`text-base sm:text-lg font-black tabular-nums mt-0.5 ${
-              isDark ? 'text-emerald-300' : 'text-emerald-600'
+            <div className={`py-2 px-2.5 rounded-xl border text-center transition-all ${
+              isDark
+                ? 'bg-emerald-950/30 border-emerald-500/25 text-emerald-300'
+                : 'bg-emerald-50 border-emerald-200 text-emerald-900 shadow-xs'
             }`}>
-              +{currencyFormat(estimatedTRProfit)}
+              <div className={`text-base sm:text-xl font-black tabular-nums ${
+                isDark ? 'text-emerald-300' : 'text-emerald-600'
+              }`}>
+                +{currencyFormat(estimatedTRProfit)}
+              </div>
             </div>
           </div>
 
-          {/* Wallet Profit Card (Yield) */}
-          <div className={`p-2.5 rounded-xl border transition-all ${
-            isDark
-              ? 'bg-cyan-950/30 border-cyan-500/25 text-cyan-300'
-              : 'bg-cyan-50 border-cyan-200 text-cyan-900 shadow-xs'
-          }`}>
-            <div className={`text-[10px] uppercase font-bold tracking-wider flex items-center justify-center gap-1 ${
+          {/* Column 2: Wallet Profit */}
+          <div className="space-y-1">
+            <div className={`text-[10px] sm:text-[11px] uppercase font-bold tracking-wider flex items-center justify-center gap-1 text-center truncate ${
               isDark ? 'text-cyan-400' : 'text-cyan-700'
             }`}>
               <Coins className={`w-3.5 h-3.5 shrink-0 ${isDark ? 'text-cyan-400' : 'text-cyan-600'}`} />
-              <span>{language === 'hi' ? `वॉलेट लाभ (${settings.yieldRatePercent}%)` : `Wallet Profit (${settings.yieldRatePercent}%)`}</span>
+              <span className="truncate">
+                {language === 'hi' ? `वॉलेट लाभ (${settings.yieldRatePercent}%)` : `Wallet Profit (${settings.yieldRatePercent}%)`}
+              </span>
             </div>
-            <div className={`text-base sm:text-lg font-black tabular-nums mt-0.5 ${
-              isDark ? 'text-cyan-300' : 'text-cyan-600'
+            <div className={`py-2 px-2.5 rounded-xl border text-center transition-all ${
+              isDark
+                ? 'bg-cyan-950/30 border-cyan-500/25 text-cyan-300'
+                : 'bg-cyan-50 border-cyan-200 text-cyan-900 shadow-xs'
             }`}>
-              +{currencyFormat(estimatedYield)}
+              <div className={`text-base sm:text-xl font-black tabular-nums ${
+                isDark ? 'text-cyan-300' : 'text-cyan-600'
+              }`}>
+                +{currencyFormat(estimatedYield)}
+              </div>
             </div>
           </div>
         </div>
