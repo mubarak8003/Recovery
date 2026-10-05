@@ -49,7 +49,10 @@ export function calculateNextTradeRecommendation(
   const safeCapital = Math.max(10, Number(tradingCapital) || 10000);
   const safeActiveLoss = Math.max(0, Number(activeLoss) || 0);
   const effectiveRR = Math.max(0.1, Number(riskRewardRatio) || 0.85);
-  const safeYieldRate = Math.max(0, Number(yieldRatePercent) || 0);
+  const rawYield = settings.yieldRatePercent;
+  const safeYieldRate = (typeof rawYield === 'number' && !isNaN(rawYield) && rawYield >= 0)
+    ? rawYield
+    : (parseFloat(String(rawYield)) >= 0 ? parseFloat(String(rawYield)) : 15);
 
   // BASE / NORMAL TRADE SIZING (Both TR + Wallet Funded by Broker):
   // Desired Base Risk/Size reference:
@@ -123,26 +126,19 @@ export function calculateNextTradeRecommendation(
     const factor = Number(stepFactors[i]) || 1;
     const portionLoss = basePortion * factor;
 
-    // 1. Base recovery amount for loss portion: e.g. 50 / 0.70 = 71.42 -> 72
+    // Exact mathematical formula:
+    // To recover portionLoss (बकाया लॉस) while earning safeYieldRate (15% wallet profit):
+    // Trade * effectiveRR = portionLoss + Trade * (safeYieldRate / 100)
+    // Trade * (effectiveRR - safeYieldRate / 100) = portionLoss
+    // Trade = portionLoss / (effectiveRR - safeYieldRate / 100)
     const netRate = Math.max(0.1, Number((effectiveRR - safeYieldRate / 100).toFixed(4)));
-    const baseTargetTrade = Math.max(1, Math.ceil(portionLoss / netRate));
-
-    // 2. Target profit on base (61.20) + Wallet profit on base (10.80) = 72.00
-    const trProfitOnBase = Number((baseTargetTrade * effectiveRR).toFixed(2));
-    const walletProfitOnBase = Number(((baseTargetTrade * (safeYieldRate / 100)).toFixed(2)));
-    const totalProfitNeeded = Number((trProfitOnBase + walletProfitOnBase).toFixed(2));
-
-    // 3. Exact Suggested Trade on broker:
-    // e.g. 72.00 / 0.85 = 84.71 (or 84.70 exact unk)
-    let calculatedTrade = Number((totalProfitNeeded / effectiveRR).toFixed(2));
+    let calculatedTrade = Number((portionLoss / netRate).toFixed(2));
 
     // Strict NaN & Infinity Prevention
     if (isNaN(calculatedTrade) || !isFinite(calculatedTrade) || calculatedTrade <= 0) {
-      calculatedTrade = Math.max(1, Math.round(safeActiveLoss / stepsCount));
+      calculatedTrade = Math.max(1, Number((safeActiveLoss / stepsCount).toFixed(2)));
     }
 
-    // Apply safety risk cap
-    calculatedTrade = Math.min(calculatedTrade, maxSafeRisk);
     calculatedTrade = Math.max(1, calculatedTrade);
 
     // Payout is purely based on the calculated trade amount: Trade Amount × Effective RR
@@ -176,8 +172,8 @@ export function calculateNextTradeRecommendation(
     finalAmount = Math.max(1, Math.round(safeActiveLoss / stepsCount));
   }
 
-  const stepTarget = Math.round(
-    basePortion * (Number(stepFactors[clampedIndex]) || 1)
+  const stepTarget = Number(
+    (basePortion * (Number(stepFactors[clampedIndex]) || 1)).toFixed(2)
   );
   // Wallet extra profit is ALWAYS based on the Trade Amount (trade amount hisaab se):
   const stepWalletExtra = Number((finalAmount * (safeYieldRate / 100)).toFixed(2));

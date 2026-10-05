@@ -48,20 +48,29 @@ export const FullDisplayTradingConsole: React.FC = () => {
   const effectiveRR = Math.max(0.1, Number(settings.riskRewardRatio) || 0.85);
 
   // Exact user formula:
-  // 1. Target Profit on base + 2. Wallet Profit on base = Total Needed (e.g. 61.20 + 10.80 = 72.00)
-  // 3. Trade on broker = Total Needed / effectiveRR (e.g. 72.00 / 0.85 = 84.71 exact unk)
+  // In recovery: Broker payout covers portionLoss (बकाया लॉस) + 15% wallet profit
+  // Trade = portionLoss / (effectiveRR - safeYieldRate)
   const suggestionBreakdown = useMemo(() => {
-    const safeYieldRate = (Number(settings.yieldRatePercent) || 15) / 100;
+    const rawYield = settings.yieldRatePercent;
+    const safeYieldPercent = (typeof rawYield === 'number' && !isNaN(rawYield) && rawYield >= 0)
+      ? rawYield
+      : (parseFloat(String(rawYield)) >= 0 ? parseFloat(String(rawYield)) : 15);
+    const safeYieldRate = safeYieldPercent / 100;
     if (activeLoss > 0) {
+      // 1. Portion of unrecovered loss to cover in this step (e.g. 27.06 / 1 = 27.06)
+      const portionLoss = Number((activeLoss / currentFactor).toFixed(2));
+      // 2. Net rate left to cover loss after 15% wallet profit is set aside:
+      // (e.g. 0.85 broker payout - 0.15 wallet = 0.70 net recovery rate)
       const netRate = Math.max(0.10, Number((effectiveRR - safeYieldRate).toFixed(4)));
-      const baseTargetTrade = Math.max(1, Math.ceil((activeLoss / currentFactor) / netRate));
-      const trProfit = Number((baseTargetTrade * effectiveRR).toFixed(2));
-      const walletProfit = Number(((baseTargetTrade * safeYieldRate).toFixed(2)));
-      const totalNeeded = Number((trProfit + walletProfit).toFixed(2));
-      const exactAmount = Number((totalNeeded / effectiveRR).toFixed(2));
+      // 3. Exact suggested trade amount on broker:
+      const exactAmount = Number((portionLoss / netRate).toFixed(2));
+      // 4. Wallet profit (15%) on this trade:
+      const walletProfit = Number(((exactAmount * safeYieldRate).toFixed(2)));
+      // 5. Total Payout Needed from broker = portionLoss + walletProfit (e.g. 27.06 + 5.80 = 32.86):
+      const totalNeeded = Number((portionLoss + walletProfit).toFixed(2));
       return {
-        baseTargetTrade,
-        trProfit,
+        baseTargetTrade: portionLoss,
+        trProfit: portionLoss,
         walletProfit,
         totalNeeded,
         exactAmount,
@@ -70,8 +79,8 @@ export const FullDisplayTradingConsole: React.FC = () => {
     const baseTargetTrade = Math.max(10, Math.round((tradingCapital * (settings.baseTradePercent || 2)) / 100));
     const trProfit = Number((baseTargetTrade * effectiveRR).toFixed(2));
     const walletProfit = Number(((baseTargetTrade * safeYieldRate).toFixed(2)));
-    const totalNeeded = Number((trProfit + walletProfit).toFixed(2));
-    const exactAmount = Number((totalNeeded / effectiveRR).toFixed(2));
+    const totalNeeded = trProfit;
+    const exactAmount = baseTargetTrade;
     return {
       baseTargetTrade,
       trProfit,
@@ -82,10 +91,8 @@ export const FullDisplayTradingConsole: React.FC = () => {
   }, [activeLoss, currentFactor, effectiveRR, settings.yieldRatePercent, tradingCapital, settings.baseTradePercent]);
 
   const systemDividedAmount = useMemo(() => {
-    const rec = Number(recommendation.amount);
-    if (!isNaN(rec) && isFinite(rec) && rec > 0) return rec;
-    return suggestionBreakdown.exactAmount;
-  }, [recommendation.amount, suggestionBreakdown.exactAmount]);
+    return Number(suggestionBreakdown.exactAmount.toFixed(2));
+  }, [suggestionBreakdown.exactAmount]);
 
   // Local state for trade amount text - KHIALI / EMPTY BY DEFAULT so user types freely
   const [tradeAmountText, setTradeAmountText] = useState<string>('');
@@ -114,16 +121,24 @@ export const FullDisplayTradingConsole: React.FC = () => {
   // Full broker payout based on trade:
   const totalWinPayout = Number((numericTradeAmount * effectiveRR).toFixed(2));
 
-  // In recovery mode, the target profit MUST cover the full loss being recovered:
+  // In recovery mode, the target loss being recovered:
   const stepTargetLoss = isRecovery
-    ? (recommendation.stepLossTarget || Math.round(activeLoss / (settings.recoveryStepsCount || 1)))
+    ? Number((activeLoss / (settings.recoveryStepsCount || 1)).toFixed(2))
     : 0;
 
   // Wallet extra profit (15% yield rate):
   const estimatedYield = Number(((numericTradeAmount * (Number(settings.yieldRatePercent) / 100)).toFixed(2)));
 
-  // Target profit (R:R): Full broker payout on trade (e.g. 55 at 85% = 46.75)
-  const estimatedTRProfit = totalWinPayout;
+  // Target profit (R:R):
+  // IN RECOVERY MODE: The exact unrecovered loss being recovered (e.g. 27.06)!
+  // "Jo nakaya hai wohi exta target me ho no miss mach"
+  // IN NORMAL MODE: Full broker payout (e.g. 55 at 85% = 46.75)
+  const estimatedTRProfit = isRecovery ? stepTargetLoss : totalWinPayout;
+
+  // Total Target Needed in Recovery = Unrecovered Loss + 15% Wallet Profit (e.g. 27.06 + 6.88 = 33.94)
+  const totalRecoveryTarget = isRecovery
+    ? Number((stepTargetLoss + estimatedYield).toFixed(2))
+    : totalWinPayout;
 
   // Handle saving manually reduced/adjusted loss (e.g. 10 -> 7 or 8)
   const handleSaveLoss = () => {
@@ -447,7 +462,7 @@ export const FullDisplayTradingConsole: React.FC = () => {
                 ? 'bg-[#080d19] border-slate-700 text-white placeholder-slate-600 focus:border-cyan-400'
                 : 'bg-white border-slate-300 text-slate-900 placeholder-slate-400 focus:border-cyan-600'
             }`}
-            placeholder={String(systemDividedAmount)}
+            placeholder={String(Number(systemDividedAmount).toFixed(2))}
           />
         </div>
 
@@ -521,7 +536,11 @@ export const FullDisplayTradingConsole: React.FC = () => {
               isDark ? 'text-emerald-400' : 'text-emerald-700'
             }`}>
               <Target className={`w-3.5 h-3.5 shrink-0 ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`} />
-              <span>{language === 'hi' ? 'टारगेट लाभ (R:R)' : 'Target Profit (R:R)'}</span>
+              <span>
+                {isRecovery
+                  ? (language === 'hi' ? 'बकाया रिकवरी (R:R)' : 'Target Recovery (R:R)')
+                  : (language === 'hi' ? 'टारगेट लाभ (R:R)' : 'Target Profit (R:R)')}
+              </span>
             </div>
             <div className={`text-base sm:text-lg font-black tabular-nums mt-0.5 ${
               isDark ? 'text-emerald-300' : 'text-emerald-600'
@@ -549,6 +568,31 @@ export const FullDisplayTradingConsole: React.FC = () => {
             </div>
           </div>
         </div>
+
+        {/* Exact Total Recovery Equation Strip (e.g. 27.06 + 6.88 = 33.94) */}
+        {isRecovery && (
+          <div className={`mt-2 pt-2 border-t text-[11px] font-mono text-center flex items-center justify-center gap-1.5 flex-wrap ${
+            isDark ? 'border-slate-800 text-slate-400' : 'border-slate-200 text-slate-600'
+          }`}>
+            <span className="font-semibold">
+              {language === 'hi' ? 'कुल टारगेट:' : 'Total Target:'}
+            </span>
+            <span className="font-bold text-emerald-400">
+              {currencyFormat(estimatedTRProfit)}
+            </span>
+            <span>+</span>
+            <span className="font-bold text-cyan-400">
+              {currencyFormat(estimatedYield)}
+            </span>
+            <span>=</span>
+            <span className="font-black text-amber-300 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20">
+              {currencyFormat(totalRecoveryTarget)}
+            </span>
+            <span className={`text-[10px] font-medium ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+              ({language === 'hi' ? `ब्रोकर पेआउट: ${currencyFormat(totalWinPayout)}` : `Broker Payout: ${currencyFormat(totalWinPayout)}`})
+            </span>
+          </div>
+        )}
       </div>
 
       {/* 5. COMPACT, CLEAN ACTION BUTTONS: WIN & LOSS */}

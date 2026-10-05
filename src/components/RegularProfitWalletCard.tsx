@@ -25,6 +25,10 @@ export const RegularProfitWalletCard: React.FC = () => {
 
   const handleYieldChange = (valStr: string) => {
     setYieldText(valStr);
+    if (valStr.trim() === '') {
+      updateSettings({ yieldRatePercent: 0 });
+      return;
+    }
     const parsed = parseFloat(valStr);
     if (!isNaN(parsed) && parsed >= 0) {
       updateSettings({ yieldRatePercent: parsed });
@@ -32,12 +36,19 @@ export const RegularProfitWalletCard: React.FC = () => {
   };
 
   const handleYieldBlur = () => {
-    const parsed = parseFloat(yieldText);
+    const trimmed = yieldText.trim();
+    if (trimmed === '') {
+      setYieldText('0');
+      updateSettings({ yieldRatePercent: 0 });
+      return;
+    }
+    const parsed = parseFloat(trimmed);
     if (isNaN(parsed) || parsed < 0) {
-      setYieldText('1.0');
-      updateSettings({ yieldRatePercent: 1.0 });
+      setYieldText('0');
+      updateSettings({ yieldRatePercent: 0 });
     } else {
       setYieldText(String(parsed));
+      updateSettings({ yieldRatePercent: parsed });
     }
   };
 
@@ -134,24 +145,25 @@ export const RegularProfitWalletCard: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-2">
-            <div className="relative w-28 shrink-0">
+            <div className="relative w-24 sm:w-28 shrink-0">
               <input
                 type="text"
                 inputMode="decimal"
                 value={yieldText}
                 onChange={(e) => handleYieldChange(e.target.value)}
                 onBlur={handleYieldBlur}
+                onFocus={(e) => e.target.select()}
                 className="w-full px-2.5 py-1.5 bg-slate-900 border border-slate-700 rounded-lg text-white font-mono font-bold text-sm focus:outline-none focus:border-cyan-400"
-                placeholder="1.0"
+                placeholder="0"
               />
               <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-cyan-400 font-mono font-bold text-xs pointer-events-none">
                 %
               </span>
             </div>
 
-            {/* Quick preset buttons */}
+            {/* Quick preset buttons (including 0%) */}
             <div className="flex-1 flex items-center gap-1 font-mono text-xs overflow-x-auto py-0.5">
-              {[0.5, 0.8, 1.0, 1.5, 2.0, 3.0].map((rate) => (
+              {[0, 0.5, 0.8, 1.0, 1.5, 2.0, 3.0].map((rate) => (
                 <button
                   key={rate}
                   type="button"

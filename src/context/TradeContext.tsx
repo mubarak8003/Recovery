@@ -323,7 +323,10 @@ export const TradeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       let lossAfter = activeLoss;
       let calculatedPnL = 0;
 
-      const safeYieldRate = Number(settings.yieldRatePercent) || 15;
+      const rawYield = settings.yieldRatePercent;
+      const safeYieldRate = (typeof rawYield === 'number' && !isNaN(rawYield) && rawYield >= 0)
+        ? rawYield
+        : (parseFloat(String(rawYield)) >= 0 ? parseFloat(String(rawYield)) : 15);
       // Regular Profit Wallet earns 15% yield on EVERY trade (both WIN and LOSS):
       const walletYieldAdded = Number(((amount * (safeYieldRate / 100)).toFixed(2)));
 
@@ -374,12 +377,16 @@ export const TradeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
         calculatedPnL = totalWinPayout;
 
-        // Credit capital with full broker payout:
-        setTradingCapitalState((prev) => Number((prev + totalWinPayout).toFixed(2)));
+        // REAL MONEY CONSERVATION (NO DOUBLE COUNTING):
+        // Total Broker Payout (e.g. ₹85.00) = Wallet Profit (₹15.00) + Trading Capital Profit (₹70.00)
+        // Wallet gets its share, and Trading Capital gets the remaining share:
+        const netCapitalProfit = Number(Math.max(0, totalWinPayout - walletYieldAdded).toFixed(2));
+
+        setTradingCapitalState((prev) => Number((prev + netCapitalProfit).toFixed(2)));
 
         if (activeLoss > 0) {
-          const recovered = Math.min(activeLoss, totalWinPayout);
-          lossAfter = Math.max(0, Number((activeLoss - totalWinPayout).toFixed(2)));
+          const recovered = Math.min(activeLoss, netCapitalProfit);
+          lossAfter = Math.max(0, Number((activeLoss - netCapitalProfit).toFixed(2)));
           setActiveLoss(lossAfter);
           setTotalRecovered((prev) => Number((prev + recovered).toFixed(2)));
 
