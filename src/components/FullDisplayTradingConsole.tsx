@@ -470,7 +470,7 @@ export const FullDisplayTradingConsole: React.FC = () => {
         >
           <div className="flex items-center gap-1.5">
             <span className={`text-[11px] font-bold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-              {language === 'hi' ? 'ब्रोकर पेआउट % (Broker Payout):' : 'Broker Payout %:'}
+              {language === 'hi' ? 'पेआउट %:' : 'Payout %:'}
             </span>
             <span className="font-bold text-amber-400 text-xs">
               {Math.round(effectiveRR * 100)}%
@@ -573,7 +573,7 @@ export const FullDisplayTradingConsole: React.FC = () => {
               {currencyFormat(totalRecoveryTarget)}
             </span>
             <span className={`text-[10px] font-medium ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-              ({language === 'hi' ? `ब्रोकर पेआउट: ${currencyFormat(totalWinPayout)}` : `Broker Payout: ${currencyFormat(totalWinPayout)}`})
+              ({language === 'hi' ? `पेआउट: ${currencyFormat(totalWinPayout)}` : `Payout: ${currencyFormat(totalWinPayout)}`})
             </span>
           </div>
         )}
