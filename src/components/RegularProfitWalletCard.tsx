@@ -16,8 +16,14 @@ export const RegularProfitWalletCard: React.FC = () => {
   } = useTrade();
 
   const [yieldText, setYieldText] = useState<string>(String(settings.yieldRatePercent));
-  const [offsetInput, setOffsetInput] = useState<number>(Math.min(regularProfitWallet, activeLoss));
+  const [customOffsetStr, setCustomOffsetStr] = useState<string>('');
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+
+  const maxOffsetAvailable = Number(Math.min(regularProfitWallet, activeLoss).toFixed(2));
+  const parsedOffset = parseFloat(customOffsetStr);
+  const effectiveOffsetAmt = (!isNaN(parsedOffset) && parsedOffset > 0)
+    ? Number(Math.min(parsedOffset, maxOffsetAvailable).toFixed(2))
+    : maxOffsetAvailable;
 
   useEffect(() => {
     setYieldText(String(settings.yieldRatePercent));
@@ -53,14 +59,15 @@ export const RegularProfitWalletCard: React.FC = () => {
   };
 
   const handleOffset = () => {
-    if (offsetInput <= 0) return;
-    const ok = offsetLossWithWallet(offsetInput);
+    if (effectiveOffsetAmt <= 0) return;
+    const ok = offsetLossWithWallet(effectiveOffsetAmt);
     if (ok) {
       setSuccessMsg(
         language === 'hi'
-          ? `वॉलेट से ${currencyFormat(offsetInput)} का उपयोग करके बकाया लॉस कम कर दिया गया!`
-          : `Applied ${currencyFormat(offsetInput)} from wallet to reduce loss!`
+          ? `वॉलेट से ${currencyFormat(effectiveOffsetAmt)} का उपयोग करके बकाया लॉस कम कर दिया गया!`
+          : `Applied ${currencyFormat(effectiveOffsetAmt)} from wallet to reduce loss!`
       );
+      setCustomOffsetStr('');
       setTimeout(() => setSuccessMsg(null), 3500);
     }
   };
@@ -186,7 +193,7 @@ export const RegularProfitWalletCard: React.FC = () => {
 
         {/* Synergistic Action: Settle Loss from Wallet if active loss exists */}
         {activeLoss > 0 && regularProfitWallet > 0 && (
-          <div className="p-3 bg-amber-950/20 border border-amber-500/30 rounded-xl space-y-2">
+          <div className="p-3 bg-amber-950/20 border border-amber-500/30 rounded-xl space-y-2.5">
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold text-amber-300">
                 {language === 'hi' ? 'वॉलेट प्रॉफ़िट से लॉस घटाएं' : 'Offset Loss with Wallet Profit'}
@@ -197,18 +204,61 @@ export const RegularProfitWalletCard: React.FC = () => {
             </div>
             <p className="text-[11px] text-slate-300 leading-relaxed">
               {language === 'hi'
-                ? 'क्योंकि हर ट्रेड से वॉलेट में लाभ जुड़ा है, आप इस पैसे से सीधे लॉस घटा सकते हैं ताकि अगली ट्रेड छोटी और सुरक्षित हो जाए।'
-                : 'Use your regular profit buffer to forgive active drawdown, immediately reducing the required next trade size.'}
+                ? 'वॉलेट में से जितनी मर्ज़ी उतनी राशि (मैन्युअल) डालकर सीधे बकाया लॉस कम कर सकते हैं।'
+                : 'Enter any custom amount from your wallet balance to forgive active drawdown.'}
             </p>
-            <div className="flex items-center gap-2">
+
+            {/* Manual Amount Input Box + MAX button */}
+            <div className="space-y-1.5">
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-mono text-xs font-bold pointer-events-none">
+                  {settings.currencySymbol}
+                </span>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={customOffsetStr}
+                  onChange={(e) => setCustomOffsetStr(e.target.value)}
+                  placeholder={String(maxOffsetAvailable)}
+                  className="w-full pl-7 pr-16 py-1.5 bg-slate-900 border border-slate-700 focus:border-amber-400 rounded-lg text-white font-mono font-bold text-xs focus:outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={() => setCustomOffsetStr(String(maxOffsetAvailable))}
+                  className="absolute right-1.5 top-1/2 -translate-y-1/2 px-2 py-0.5 rounded bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 text-[10px] font-bold font-mono transition-colors cursor-pointer"
+                >
+                  {language === 'hi' ? 'पूरा (MAX)' : 'MAX'}
+                </button>
+              </div>
+
+              {/* Quick % Chips */}
+              <div className="flex items-center gap-1 font-mono text-[10px]">
+                {[25, 50, 75, 100].map((pct) => {
+                  const val = Number(((maxOffsetAvailable * pct) / 100).toFixed(2));
+                  return (
+                    <button
+                      key={pct}
+                      type="button"
+                      onClick={() => setCustomOffsetStr(String(val))}
+                      className="flex-1 py-1 rounded bg-slate-800/80 hover:bg-slate-700 text-slate-300 font-semibold border border-slate-700/60 transition-colors text-center cursor-pointer"
+                    >
+                      {pct}%
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="pt-0.5">
               <button
                 type="button"
                 onClick={handleOffset}
-                className="w-full py-1.5 px-3 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs transition-colors cursor-pointer"
+                disabled={effectiveOffsetAmt <= 0}
+                className="w-full py-2 px-3 rounded-lg bg-amber-500 hover:bg-amber-400 disabled:opacity-50 disabled:cursor-not-allowed text-slate-950 font-bold text-xs transition-colors cursor-pointer shadow-sm shadow-amber-500/20"
               >
                 {language === 'hi'
-                  ? `${currencyFormat(Math.min(regularProfitWallet, activeLoss))} से लॉस घटाएं`
-                  : `Apply ${currencyFormat(Math.min(regularProfitWallet, activeLoss))} to Loss`}
+                  ? `${currencyFormat(effectiveOffsetAmt)} से लॉस घटाएं`
+                  : `Apply ${currencyFormat(effectiveOffsetAmt)} to Loss`}
               </button>
             </div>
           </div>
