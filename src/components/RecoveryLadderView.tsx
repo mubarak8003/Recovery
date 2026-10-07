@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useTrade } from '../context/TradeContext';
+import { StrategyForecastCard } from './StrategyForecastCard';
 import {
   Layers,
   ShieldCheck,
@@ -494,6 +495,11 @@ export const RecoveryLadderView: React.FC = () => {
           })}
         </div>
       )}
+
+      {/* Strategy Forecast: NEXT 20 Trades Simulation */}
+      <div className="pt-2">
+        <StrategyForecastCard />
+      </div>
     </div>
   );
 };
