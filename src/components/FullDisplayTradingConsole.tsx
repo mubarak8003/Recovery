@@ -101,9 +101,24 @@ export const FullDisplayTradingConsole: React.FC = () => {
   const [isEditingLoss, setIsEditingLoss] = useState(false);
   const [lossInput, setLossInput] = useState<string>(String(Math.max(0, activeLoss || 0)));
 
-  // Local state for note and feedback
-  const [note, setNote] = useState<string>('');
+  // Local persistent note saved in localStorage, not sent to trade history
+  const [note, setNote] = useState<string>(() => {
+    try {
+      return localStorage.getItem('tradesizer_quick_note') || '';
+    } catch {
+      return '';
+    }
+  });
   const [lastActionMessage, setLastActionMessage] = useState<string | null>(null);
+
+  const handleNoteChange = (val: string) => {
+    setNote(val);
+    try {
+      localStorage.setItem('tradesizer_quick_note', val);
+    } catch {
+      // ignore
+    }
+  };
 
   useEffect(() => {
     if (!isEditingLoss) {
@@ -181,7 +196,8 @@ export const FullDisplayTradingConsole: React.FC = () => {
       amount: validAmount,
       result,
       actualPnL: result === 'WIN' ? Number((validAmount * effectiveRR).toFixed(2)) : -validAmount,
-      note: note.trim() || undefined,
+      // Note is personal & saved in localStorage only, not sent to trading history:
+      note: undefined,
     });
 
     setLastActionMessage(
@@ -197,7 +213,6 @@ export const FullDisplayTradingConsole: React.FC = () => {
     // Keep input empty for next user trade
     setTradeAmountText('');
     setCustomTradeAmountOverride(null);
-    setNote('');
     setTimeout(() => setLastActionMessage(null), 3500);
   };
 
@@ -664,7 +679,7 @@ export const FullDisplayTradingConsole: React.FC = () => {
               : 'Optional note (e.g. BTC, Nifty, Trade #2)...'
           }
           value={note}
-          onChange={(e) => setNote(e.target.value)}
+          onChange={(e) => handleNoteChange(e.target.value)}
           className="flex-1 px-3 py-1.5 bg-[#080d19] border border-slate-800 rounded-lg text-slate-300 text-xs focus:outline-none focus:border-slate-700"
         />
         {isRecovery && (

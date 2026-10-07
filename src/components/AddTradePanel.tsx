@@ -12,8 +12,23 @@ export const AddTradePanel: React.FC = () => {
   } = useTrade();
 
   const [amountText, setAmountText] = useState<string>(String(recommendation.amount));
-  const [note, setNote] = useState<string>('');
+  const [note, setNote] = useState<string>(() => {
+    try {
+      return localStorage.getItem('tradesizer_quick_note') || '';
+    } catch {
+      return '';
+    }
+  });
   const [lastActionMessage, setLastActionMessage] = useState<string | null>(null);
+
+  const handleNoteChange = (val: string) => {
+    setNote(val);
+    try {
+      localStorage.setItem('tradesizer_quick_note', val);
+    } catch {
+      // ignore
+    }
+  };
 
   // Sync with recommendation when recommendation updates
   useEffect(() => {
@@ -31,7 +46,7 @@ export const AddTradePanel: React.FC = () => {
       amount: numericTradeAmount,
       result,
       actualPnL: result === 'WIN' ? estimatedWinPayout : -numericTradeAmount,
-      note: note.trim() || undefined,
+      note: undefined,
     });
 
     setLastActionMessage(
@@ -181,7 +196,7 @@ export const AddTradePanel: React.FC = () => {
               : 'Optional note (e.g. BTC, Nifty, Trade #2)...'
           }
           value={note}
-          onChange={(e) => setNote(e.target.value)}
+          onChange={(e) => handleNoteChange(e.target.value)}
           className="w-full px-3 py-1.5 bg-[#080d19] border border-slate-800 rounded-lg text-slate-300 text-xs focus:outline-none focus:border-slate-600"
         />
       </div>

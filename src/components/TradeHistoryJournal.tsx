@@ -279,6 +279,18 @@ export const TradeHistoryJournal: React.FC = () => {
                       </span>
                     </div>
                   </div>
+
+                  {/* Note display on mobile cards */}
+                  {item.assetOrMarket && item.assetOrMarket !== 'Trade Entry' && (
+                    <div className="pt-1.5 mt-1 border-t border-slate-800/40 flex items-center gap-1.5 text-[11px]">
+                      <span className="text-[10px] uppercase font-bold text-slate-500 font-mono">
+                        {language === 'hi' ? 'नोट:' : 'Note:'}
+                      </span>
+                      <span className="font-sans text-cyan-300 bg-cyan-950/40 px-2 py-0.5 rounded border border-cyan-500/20 truncate max-w-full font-medium">
+                        {item.assetOrMarket}
+                      </span>
+                    </div>
+                  )}
                 </div>
               );
             })}
