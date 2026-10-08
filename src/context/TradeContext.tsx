@@ -58,6 +58,7 @@ interface TradeContextType {
   updateSettings: (newSettings: Partial<Settings>) => void;
   setTradingCapital: (amount: number) => void;
   setActiveLossAmount: (amount: number) => void;
+  setRegularProfitWalletAmount: (amount: number) => void;
   theme: 'dark' | 'light';
   setTheme: (t: 'dark' | 'light') => void;
   toggleTheme: () => void;
@@ -103,7 +104,7 @@ function getInitialSavedData(): SavedSessionData | null {
     if (parsed && parsed.settings && (!parsed.activeLoss || parsed.activeLoss <= 0)) {
       parsed.settings.recoveryStepsCount = 1;
     }
-    // Auto-fix any history trades where walletYieldAdded was 0
+    // Ensure lifetime yield reflects all-time total earnings while preserving actual current vault balance:
     if (parsed && Array.isArray(parsed.tradeHistory) && parsed.tradeHistory.length > 0) {
       let totalYield = 0;
       for (const t of parsed.tradeHistory) {
@@ -112,8 +113,15 @@ function getInitialSavedData(): SavedSessionData | null {
         }
         totalYield += t.walletYieldAdded;
       }
-      parsed.regularProfitWallet = Number(totalYield.toFixed(2));
-      parsed.lifetimeYieldEarned = Number(totalYield.toFixed(2));
+      // Lifetime yield is all-time total produced:
+      parsed.lifetimeYieldEarned = Math.max(
+        Number(parsed.lifetimeYieldEarned || 0),
+        Number(totalYield.toFixed(2))
+      );
+      // NEVER overwrite regularProfitWallet if it already exists (e.g. after apply to loss / compound)!
+      if (parsed.regularProfitWallet === undefined || parsed.regularProfitWallet === null || isNaN(parsed.regularProfitWallet)) {
+        parsed.regularProfitWallet = Number(totalYield.toFixed(2));
+      }
     }
     return parsed;
   } catch {
@@ -543,6 +551,11 @@ export const TradeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }
   }, []);
 
+  const setRegularProfitWalletAmount = useCallback((amount: number) => {
+    const val = Math.max(0, Number(amount) || 0);
+    setRegularProfitWallet(Number(val.toFixed(2)));
+  }, []);
+
   const resetAll = useCallback((newCapital: number = 10000) => {
     setTradingCapitalState(newCapital);
     setRegularProfitWallet(0);
@@ -597,6 +610,7 @@ export const TradeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         updateSettings,
         setTradingCapital,
         setActiveLossAmount,
+        setRegularProfitWalletAmount,
         theme,
         setTheme,
         toggleTheme,
