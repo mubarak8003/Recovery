@@ -6,6 +6,7 @@ import { RecoveryLadderView } from './components/RecoveryLadderView';
 import { RegularProfitWalletCard } from './components/RegularProfitWalletCard';
 import { TradeHistoryJournal } from './components/TradeHistoryJournal';
 import { OfflineIndicator } from './components/OfflineIndicator';
+import { FloatingSecondsClock } from './components/FloatingSecondsClock';
 import {
   Coins,
   PartyPopper,
@@ -24,6 +25,8 @@ const MainWorkspace: React.FC = () => {
     recoveryCompletedModal,
     setRecoveryCompletedModal,
     theme,
+    isFloatingClockOpen,
+    setIsFloatingClockOpen,
   } = useTrade();
 
   const isDark = theme === 'dark';
@@ -221,6 +224,12 @@ const MainWorkspace: React.FC = () => {
           </div>
         </div>
       </footer>
+
+      {/* Floating Live Seconds Clock */}
+      <FloatingSecondsClock
+        isOpen={isFloatingClockOpen}
+        onClose={() => setIsFloatingClockOpen(false)}
+      />
     </div>
   );
 };

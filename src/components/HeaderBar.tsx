@@ -12,6 +12,7 @@ import {
   Sparkles,
   Sun,
   Moon,
+  Clock,
 } from 'lucide-react';
 import { PWAInstallButton } from './PWAInstallButton';
 
@@ -27,6 +28,8 @@ export const HeaderBar: React.FC = () => {
     currencyFormat,
     theme,
     toggleTheme,
+    isFloatingClockOpen,
+    toggleFloatingClock,
   } = useTrade();
 
   const [isEditingCapital, setIsEditingCapital] = useState(false);
@@ -204,6 +207,26 @@ export const HeaderBar: React.FC = () => {
                   </span>
                 </>
               )}
+            </button>
+
+            {/* Floating Live Clock Toggle Button */}
+            <button
+              onClick={toggleFloatingClock}
+              className={`flex items-center gap-1 p-1.5 sm:px-2.5 rounded-lg border transition-colors cursor-pointer shrink-0 text-xs font-mono shadow-sm ${
+                isFloatingClockOpen
+                  ? 'border-cyan-500/50 bg-cyan-950/40 text-cyan-300 shadow-cyan-950/30'
+                  : 'border-slate-700 bg-slate-800 text-slate-400 hover:text-white'
+              }`}
+              title={
+                isFloatingClockOpen
+                  ? (language === 'hi' ? 'लाइव सेकंड क्लॉक छुपाएं' : 'Hide Live Clock')
+                  : (language === 'hi' ? 'लाइव सेकंड क्लॉक चालू करें' : 'Show Live Clock')
+              }
+            >
+              <Clock className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+              <span className="hidden sm:inline text-[11px] font-semibold">
+                {language === 'hi' ? 'घड़ी' : 'Clock'}
+              </span>
             </button>
 
             {/* PWA Install Button */}

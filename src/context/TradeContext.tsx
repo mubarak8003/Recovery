@@ -59,6 +59,9 @@ interface TradeContextType {
   setTradingCapital: (amount: number) => void;
   setActiveLossAmount: (amount: number) => void;
   setRegularProfitWalletAmount: (amount: number) => void;
+  isFloatingClockOpen: boolean;
+  setIsFloatingClockOpen: (open: boolean) => void;
+  toggleFloatingClock: () => void;
   theme: 'dark' | 'light';
   setTheme: (t: 'dark' | 'light') => void;
   toggleTheme: () => void;
@@ -183,6 +186,33 @@ export const TradeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       const next = prev === 'dark' ? 'light' : 'dark';
       try {
         localStorage.setItem('tradesizer_theme', next);
+      } catch {}
+      return next;
+    });
+  }, []);
+
+  const [isFloatingClockOpen, setIsFloatingClockOpenState] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem('tradesizer_floating_clock_visible');
+      if (saved !== null) return saved === 'true';
+      return true; // Default to true so user sees the clock immediately
+    } catch {
+      return true;
+    }
+  });
+
+  const setIsFloatingClockOpen = useCallback((open: boolean) => {
+    setIsFloatingClockOpenState(open);
+    try {
+      localStorage.setItem('tradesizer_floating_clock_visible', String(open));
+    } catch {}
+  }, []);
+
+  const toggleFloatingClock = useCallback(() => {
+    setIsFloatingClockOpenState((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem('tradesizer_floating_clock_visible', String(next));
       } catch {}
       return next;
     });
@@ -611,6 +641,9 @@ export const TradeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         setTradingCapital,
         setActiveLossAmount,
         setRegularProfitWalletAmount,
+        isFloatingClockOpen,
+        setIsFloatingClockOpen,
+        toggleFloatingClock,
         theme,
         setTheme,
         toggleTheme,
