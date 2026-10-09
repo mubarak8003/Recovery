@@ -143,7 +143,7 @@ export const RecoveryLadderView: React.FC = () => {
             onClick={() => updateSettings({ strategy: 'SMART_LADDER' })}
             className={`px-2 py-0.5 rounded transition-colors cursor-pointer ${
               settings.strategy === 'SMART_LADDER'
-                ? 'bg-emerald-500 text-slate-950 font-bold'
+                ? 'bg-emerald-500 text-slate-950 font-bold shadow-sm'
                 : 'text-slate-400 hover:text-white'
             }`}
           >
@@ -154,7 +154,7 @@ export const RecoveryLadderView: React.FC = () => {
             onClick={() => updateSettings({ strategy: 'FIBONACCI' })}
             className={`px-2 py-0.5 rounded transition-colors cursor-pointer ${
               settings.strategy === 'FIBONACCI'
-                ? 'bg-emerald-500 text-slate-950 font-bold'
+                ? 'bg-emerald-500 text-slate-950 font-bold shadow-sm'
                 : 'text-slate-400 hover:text-white'
             }`}
           >

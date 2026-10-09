@@ -31,6 +31,7 @@ export const StrategyForecastCard: React.FC = () => {
     tradingCapital,
     activeLoss,
     settings,
+    updateSettings,
     language,
     currencyFormat,
     theme,
@@ -58,6 +59,7 @@ export const StrategyForecastCard: React.FC = () => {
     let currentCap = Math.max(1, tradingCapital);
     let currentLoss = Math.max(0, activeLoss);
     let currentFactor = startFactor;
+    let currentFibStep = 0;
     let totalWalletYield = 0;
     let totalLossAccumulated = 0;
     let totalProfitEarned = 0;
@@ -67,11 +69,34 @@ export const StrategyForecastCard: React.FC = () => {
 
     const steps: SimulatedStep[] = [];
 
+    // Precalculate Fibonacci sequence for simulation
+    const fibFactors: number[] = [];
+    let fa = 1, fb = 1;
+    for (let f = 0; f < 100; f++) {
+      fibFactors.push(fa);
+      const nextFib = fa + fb;
+      fa = fb;
+      fb = nextFib;
+    }
+
     for (let i = 1; i <= tradeCount; i++) {
       // 1. Calculate trade size
       let tradeAmount = 0;
+      let stepFactorDisplay = currentFactor;
+
       if (currentLoss > 0) {
-        const portionLoss = currentLoss / currentFactor;
+        let portionLoss = 0;
+        if (settings.strategy === 'FIBONACCI') {
+          const stepsCount = Math.max(1, currentFactor);
+          const currentSum = fibFactors.slice(0, stepsCount).reduce((a, b) => a + b, 0) || 1;
+          const sIdx = Math.min(stepsCount - 1, currentFibStep);
+          const factorVal = fibFactors[sIdx] || 1;
+          stepFactorDisplay = factorVal;
+          portionLoss = Number(((currentLoss / currentSum) * factorVal).toFixed(2));
+        } else {
+          portionLoss = Number((currentLoss / currentFactor).toFixed(2));
+        }
+
         const netRate = Math.max(0.1, effectiveRR - safeYieldRate);
         tradeAmount = Number((portionLoss / netRate).toFixed(2));
       } else {
@@ -123,6 +148,9 @@ export const StrategyForecastCard: React.FC = () => {
           currentLoss = Math.max(0, Number((currentLoss - netCapProfit).toFixed(2)));
           if (currentLoss === 0) {
             currentFactor = 1; // Reset factor on full recovery
+            currentFibStep = 0;
+          } else {
+            currentFibStep = Math.max(0, currentFibStep - 1);
           }
         }
       } else {
@@ -133,6 +161,7 @@ export const StrategyForecastCard: React.FC = () => {
         const lossBeforeThis = currentLoss;
         currentLoss = Number((currentLoss + deficitToAdd).toFixed(2));
         totalLossAccumulated = Number((totalLossAccumulated + tradeAmount).toFixed(2));
+        currentFibStep++;
 
         // Advance factor: if starting from clean account, first recovery stays at factor 1:
         if (lossBeforeThis > 0) {
@@ -145,7 +174,7 @@ export const StrategyForecastCard: React.FC = () => {
       steps.push({
         step: i,
         tradeAmount,
-        factor: currentFactor,
+        factor: stepFactorDisplay,
         lossToRecover: currentLoss,
         pnl,
         capitalAfter: currentCap,
@@ -181,6 +210,7 @@ export const StrategyForecastCard: React.FC = () => {
     tradeCount,
     scenario,
     customWinRate,
+    settings.strategy,
   ]);
 
   return (
@@ -264,6 +294,34 @@ export const StrategyForecastCard: React.FC = () => {
             <span className="text-[10px] text-slate-400">
               {language === 'hi' ? 'ट्रेड्स' : 'Trades'}
             </span>
+          </div>
+
+          {/* Strategy Mode Switcher in Forecast */}
+          <div className="flex items-center gap-1 bg-slate-900/60 p-1 rounded-lg border border-slate-800">
+            <button
+              type="button"
+              onClick={() => updateSettings({ strategy: 'SMART_LADDER' })}
+              className={`px-2 py-0.5 rounded font-bold transition-all cursor-pointer text-xs ${
+                settings.strategy !== 'FIBONACCI'
+                  ? 'bg-emerald-500 text-slate-950 shadow-sm'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+              title="Smart Ladder (समान भाग)"
+            >
+              Smart Ladder
+            </button>
+            <button
+              type="button"
+              onClick={() => updateSettings({ strategy: 'FIBONACCI' })}
+              className={`px-2 py-0.5 rounded font-bold transition-all cursor-pointer text-xs ${
+                settings.strategy === 'FIBONACCI'
+                  ? 'bg-emerald-500 text-slate-950 shadow-sm'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+              title="Fibonacci (1, 1, 2, 3.. अनुक्रम)"
+            >
+              Fibonacci
+            </button>
           </div>
         </div>
       </div>

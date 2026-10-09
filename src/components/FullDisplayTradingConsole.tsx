@@ -21,6 +21,7 @@ export const FullDisplayTradingConsole: React.FC = () => {
   const {
     recommendation,
     activeLoss,
+    currentStepIndex,
     setActiveLossAmount,
     consecutiveLossCount,
     language,
@@ -48,7 +49,7 @@ export const FullDisplayTradingConsole: React.FC = () => {
   const effectiveRR = Math.max(0.1, Number(settings.riskRewardRatio) || 0.85);
 
   // Exact user formula:
-  // In recovery: Broker payout covers portionLoss (बकाया लॉस) + 15% wallet profit
+  // In recovery: Broker payout covers portionLoss (बकाया लॉस) + wallet profit
   // Trade = portionLoss / (effectiveRR - safeYieldRate)
   const suggestionBreakdown = useMemo(() => {
     const rawYield = settings.yieldRatePercent;
@@ -56,17 +57,35 @@ export const FullDisplayTradingConsole: React.FC = () => {
       ? rawYield
       : (parseFloat(String(rawYield)) >= 0 ? parseFloat(String(rawYield)) : 15);
     const safeYieldRate = safeYieldPercent / 100;
+
     if (activeLoss > 0) {
-      // 1. Portion of unrecovered loss to cover in this step (e.g. 27.06 / 1 = 27.06)
-      const portionLoss = Number((activeLoss / currentFactor).toFixed(2));
-      // 2. Net rate left to cover loss after 15% wallet profit is set aside:
-      // (e.g. 0.85 broker payout - 0.15 wallet = 0.70 net recovery rate)
+      let portionLoss = 0;
+      if (settings.strategy === 'FIBONACCI') {
+        const stepsCount = Math.max(1, currentFactor);
+        let a = 1, b = 1;
+        const stepFactors: number[] = [];
+        for (let i = 0; i < stepsCount; i++) {
+          stepFactors.push(a);
+          const next = a + b;
+          a = b;
+          b = next;
+        }
+        const factorSum = stepFactors.reduce((acc, curr) => acc + curr, 0) || 1;
+        const currentStepIdx = Math.min(stepsCount - 1, Math.max(0, currentStepIndex));
+        const stepFactor = stepFactors[currentStepIdx] || 1;
+        portionLoss = Number(((activeLoss / factorSum) * stepFactor).toFixed(2));
+      } else {
+        // Smart Ladder (Equal divide across steps):
+        portionLoss = Number((activeLoss / currentFactor).toFixed(2));
+      }
+
+      // 2. Net rate left to cover loss after wallet profit is set aside:
       const netRate = Math.max(0.10, Number((effectiveRR - safeYieldRate).toFixed(4)));
       // 3. Exact suggested trade amount on broker:
       const exactAmount = Number((portionLoss / netRate).toFixed(2));
-      // 4. Wallet profit (15%) on this trade:
+      // 4. Wallet profit on this trade:
       const walletProfit = Number(((exactAmount * safeYieldRate).toFixed(2)));
-      // 5. Total Payout Needed from broker = portionLoss + walletProfit (e.g. 27.06 + 5.80 = 32.86):
+      // 5. Total Payout Needed from broker = portionLoss + walletProfit:
       const totalNeeded = Number((portionLoss + walletProfit).toFixed(2));
       return {
         baseTargetTrade: portionLoss,
@@ -88,7 +107,16 @@ export const FullDisplayTradingConsole: React.FC = () => {
       totalNeeded,
       exactAmount,
     };
-  }, [activeLoss, currentFactor, effectiveRR, settings.yieldRatePercent, tradingCapital, settings.baseTradePercent]);
+  }, [
+    activeLoss,
+    currentFactor,
+    effectiveRR,
+    settings.yieldRatePercent,
+    tradingCapital,
+    settings.baseTradePercent,
+    settings.strategy,
+    currentStepIndex,
+  ]);
 
   const systemDividedAmount = useMemo(() => {
     return Number(suggestionBreakdown.exactAmount.toFixed(2));
@@ -395,20 +423,52 @@ export const FullDisplayTradingConsole: React.FC = () => {
 
       {/* 3A. SYSTEM DIVIDED TRADE AMOUNT SUGGESTION (Title Outside Card) */}
       <div className="space-y-1.5">
-        {/* Title OUTSIDE Card */}
-        <div className="flex items-center gap-2 px-1">
-          <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse shrink-0" />
-          <span className={`text-[11px] sm:text-xs font-mono font-bold uppercase tracking-wider ${
-            isDark ? 'text-amber-400' : 'text-amber-700'
-          }`}>
-            {isRecovery
-              ? language === 'hi'
-                ? 'सिस्टम सुझाया गया ट्रेड (DIVIDED SUGGESTION)'
-                : 'SYSTEM DIVIDED SUGGESTION'
-              : language === 'hi'
-              ? 'सिस्टम सुझाई गई सामान्य ट्रेड (SUGGESTED TRADE)'
-              : 'SYSTEM SUGGESTED TRADE'}
-          </span>
+        {/* Title OUTSIDE Card with Active Strategy Toggle */}
+        <div className="flex items-center justify-between gap-2 px-1 flex-wrap">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse shrink-0" />
+            <span className={`text-[11px] sm:text-xs font-mono font-bold uppercase tracking-wider ${
+              isDark ? 'text-amber-400' : 'text-amber-700'
+            }`}>
+              {isRecovery
+                ? language === 'hi'
+                  ? 'सिस्टम सुझाई गई ट्रेड (DIVIDED SUGGESTION)'
+                  : 'SYSTEM DIVIDED SUGGESTION'
+                : language === 'hi'
+                ? 'सिस्टम सुझाई गई सामान्य ट्रेड (SUGGESTED TRADE)'
+                : 'SYSTEM SUGGESTED TRADE'}
+            </span>
+          </div>
+
+          {/* Quick Strategy Toggle Right on the Console */}
+          {isRecovery && (
+            <div className="flex items-center gap-1 font-mono text-[10px] bg-slate-900/80 p-0.5 rounded-lg border border-slate-800">
+              <button
+                type="button"
+                onClick={() => updateSettings({ strategy: 'SMART_LADDER' })}
+                className={`px-1.5 py-0.5 rounded transition-all cursor-pointer ${
+                  settings.strategy !== 'FIBONACCI'
+                    ? 'bg-emerald-500 text-slate-950 font-bold shadow-xs'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+                title="Smart Ladder: समान भाग रिकवरी"
+              >
+                Smart Ladder
+              </button>
+              <button
+                type="button"
+                onClick={() => updateSettings({ strategy: 'FIBONACCI' })}
+                className={`px-1.5 py-0.5 rounded transition-all cursor-pointer ${
+                  settings.strategy === 'FIBONACCI'
+                    ? 'bg-emerald-500 text-slate-950 font-bold shadow-xs'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+                title="Fibonacci: 1, 1, 2, 3.. अनुक्रम"
+              >
+                Fibonacci
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Card containing Amount and Formula Breakdown */}
