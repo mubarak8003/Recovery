@@ -60,7 +60,7 @@ export const HeaderBar: React.FC = () => {
   return (
     <>
       <header className="border-b border-slate-800 bg-[#090e1a]/95 backdrop-blur-md sticky top-0 z-40">
-        <div className="max-w-[1440px] mx-auto px-2 sm:px-6 h-14 sm:h-16 flex items-center justify-between gap-1.5 sm:gap-4 overflow-x-auto scrollbar-none overscroll-x-contain">
+        <div className="max-w-[1440px] mx-auto px-0.5 sm:px-3 h-14 sm:h-16 flex items-center justify-between gap-1.5 sm:gap-4 overflow-x-auto scrollbar-none overscroll-x-contain">
           {/* Brand Zone */}
           <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
             <img

@@ -250,7 +250,7 @@ export const FullDisplayTradingConsole: React.FC = () => {
 
   return (
     <div
-      className={`w-full rounded-2xl border p-3.5 sm:p-6 space-y-3 sm:space-y-4 transition-all ${
+      className={`w-full rounded-2xl border p-2.5 sm:p-5 space-y-1.5 sm:space-y-3 transition-all ${
         isDark ? 'bg-[#0a1120] border-slate-800 text-white shadow-lg' : 'bg-white border-slate-200 text-slate-900 shadow-sm'
       }`}
     >

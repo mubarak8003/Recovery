@@ -100,7 +100,7 @@ const MainWorkspace: React.FC = () => {
       )}
 
       {/* Main Workspace: Direct Full Display Console (No bulky separate main card) */}
-      <main className="flex-1 max-w-[1440px] w-full mx-auto px-2 sm:px-6 py-2 sm:py-4 space-y-2 sm:space-y-3 pb-28">
+      <main className="flex-1 max-w-[1440px] w-full mx-auto px-0.5 sm:px-3 py-1 sm:py-3 space-y-0.5 sm:space-y-2 pb-28">
         {/* UNIFIED FULL DISPLAY TRADING CONSOLE: Amount, Divide, Loss & Big WIN/LOSS Buttons in 1 View */}
         <FullDisplayTradingConsole />
 
@@ -196,7 +196,7 @@ const MainWorkspace: React.FC = () => {
         {activeTab === 'ladder' && <RecoveryLadderView />}
         {activeTab === 'wallet' && <RegularProfitWalletCard />}
         {activeTab === 'all' && (
-          <div className="space-y-2 sm:space-y-3">
+          <div className="space-y-0.5 sm:space-y-2">
             <TradeHistoryJournal />
             <RecoveryLadderView />
             <RegularProfitWalletCard />

@@ -128,11 +128,11 @@ export const RegularProfitWalletCard: React.FC = () => {
   };
 
   return (
-    <div className="bg-[#0b1222] border border-cyan-500/30 rounded-2xl p-4 sm:p-5 shadow-lg relative overflow-hidden">
+    <div className="bg-[#0b1222] border border-cyan-500/30 rounded-2xl p-2.5 sm:p-4 shadow-lg relative overflow-hidden">
       {/* Background glow */}
       <div className="absolute top-0 right-0 w-48 h-48 bg-cyan-500/5 blur-2xl pointer-events-none" />
 
-      <div className="relative z-10 space-y-4">
+      <div className="relative z-10 space-y-1.5 sm:space-y-3">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">

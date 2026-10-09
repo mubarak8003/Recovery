@@ -115,7 +115,7 @@ export const RecoveryLadderView: React.FC = () => {
   };
 
   return (
-    <div className="bg-[#0b1222] border border-slate-800 rounded-2xl p-4 sm:p-5 shadow-lg space-y-4">
+    <div className="bg-[#0b1222] border border-slate-800 rounded-2xl p-2.5 sm:p-5 shadow-lg space-y-1.5 sm:space-y-3">
       {/* Title & Header */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
