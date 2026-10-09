@@ -184,6 +184,7 @@ export const StrategyForecastCard: React.FC = () => {
     }
 
     const netChange = Number((currentCap - tradingCapital).toFixed(2));
+    const totalCombinedNet = Number((netChange + totalWalletYield).toFixed(2));
     const drawdownPct =
       tradingCapital > 0
         ? Math.min(100, Number(((totalLossAccumulated / tradingCapital) * 100).toFixed(1)))
@@ -193,6 +194,7 @@ export const StrategyForecastCard: React.FC = () => {
       steps,
       finalCapital: currentCap,
       netChange,
+      totalCombinedNet,
       totalLossAccumulated,
       totalProfitEarned,
       totalWalletYield,
@@ -518,17 +520,34 @@ export const StrategyForecastCard: React.FC = () => {
             ) : (
               <span className="text-rose-400">-{currencyFormat(Math.abs(simulation.netChange))}</span>
             )}
+            <span className="text-[10px] text-slate-400 block font-normal font-sans">
+              {language === 'hi' ? '(ट्रेडिंग कैपिटल P&L)' : '(Trading Capital P&L)'}
+            </span>
           </div>
         </div>
 
         {/* Card 2: Ending Balance */}
-        <div className="p-2.5 rounded-xl border bg-slate-900/40 border-slate-800">
-          <span className="text-[10px] text-slate-400 uppercase font-semibold block">
+        <div
+          className={`p-2.5 rounded-xl border ${
+            isDark ? 'bg-slate-900/40 border-slate-800' : 'bg-slate-50 border-slate-200'
+          }`}
+        >
+          <span
+            className={`text-[10px] uppercase font-semibold block ${
+              isDark ? 'text-slate-400' : 'text-slate-500'
+            }`}
+          >
             {language === 'hi' ? 'बचा हुआ कैपिटल' : 'Final Capital'}
           </span>
           <div
             className={`text-base sm:text-lg font-black tabular-nums mt-0.5 ${
-              simulation.finalCapital < 0 ? 'text-rose-400' : 'text-cyan-300'
+              simulation.finalCapital < 0
+                ? isDark
+                  ? 'text-rose-400'
+                  : 'text-rose-600'
+                : isDark
+                ? 'text-cyan-300'
+                : 'text-sky-700'
             }`}
           >
             {currencyFormat(simulation.finalCapital)}
@@ -536,37 +555,184 @@ export const StrategyForecastCard: React.FC = () => {
         </div>
 
         {/* Card 3: Max Drawdown % */}
-        <div className="p-2.5 rounded-xl border bg-slate-900/40 border-slate-800">
-          <span className="text-[10px] text-slate-400 uppercase font-semibold block">
+        <div
+          className={`p-2.5 rounded-xl border ${
+            isDark ? 'bg-slate-900/40 border-slate-800' : 'bg-slate-50 border-slate-200'
+          }`}
+        >
+          <span
+            className={`text-[10px] uppercase font-semibold block ${
+              isDark ? 'text-slate-400' : 'text-slate-500'
+            }`}
+          >
             {language === 'hi' ? 'ड्रॉडडाउन प्रभाव' : 'Drawdown Impact'}
           </span>
-          <div className="text-base sm:text-lg font-black tabular-nums mt-0.5 text-amber-300">
+          <div
+            className={`text-base sm:text-lg font-black tabular-nums mt-0.5 ${
+              isDark ? 'text-amber-300' : 'text-amber-700'
+            }`}
+          >
             {simulation.drawdownPct}%
           </div>
         </div>
 
         {/* Card 4: Wallet Yield Earned */}
-        <div className="p-2.5 rounded-xl border bg-slate-900/40 border-slate-800">
-          <span className="text-[10px] text-slate-400 uppercase font-semibold block">
+        <div
+          className={`p-2.5 rounded-xl border ${
+            isDark ? 'bg-slate-900/40 border-slate-800' : 'bg-slate-50 border-slate-200'
+          }`}
+        >
+          <span
+            className={`text-[10px] uppercase font-semibold block ${
+              isDark ? 'text-slate-400' : 'text-slate-500'
+            }`}
+          >
             {language === 'hi' ? 'वॉलेट में जमा लाभ' : 'Vault Yield Earned'}
           </span>
-          <div className="text-base sm:text-lg font-black tabular-nums mt-0.5 text-emerald-400">
+          <div
+            className={`text-base sm:text-lg font-black tabular-nums mt-0.5 ${
+              isDark ? 'text-emerald-400' : 'text-emerald-700'
+            }`}
+          >
             +{currencyFormat(simulation.totalWalletYield)}
+            <span
+              className={`text-[10px] block font-normal font-sans ${
+                isDark ? 'text-slate-400' : 'text-slate-500'
+              }`}
+            >
+              {language === 'hi' ? '(सुरक्षित वॉलेट लाभ)' : '(Safe Vault Yield)'}
+            </span>
           </div>
+        </div>
+      </div>
+
+      {/* 3B. TOTAL OVERALL NET PROFIT BREAKDOWN (Capital P&L + Vault Yield combined & netted) */}
+      <div
+        className={`p-3 sm:p-3.5 rounded-xl border shadow-sm space-y-2 transition-colors ${
+          isDark
+            ? 'bg-[#0b1324] border-cyan-500/20 text-white'
+            : simulation.totalCombinedNet >= 0
+            ? 'bg-emerald-50/80 border-emerald-200/90 text-slate-900'
+            : 'bg-rose-50/80 border-rose-200/90 text-slate-900'
+        }`}
+      >
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <div
+              className={`w-6 h-6 rounded-md flex items-center justify-center shrink-0 ${
+                isDark
+                  ? 'bg-emerald-500/15 text-emerald-400'
+                  : 'bg-emerald-100 text-emerald-700 border border-emerald-200'
+              }`}
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+            </div>
+            <span
+              className={`font-semibold text-xs sm:text-sm ${
+                isDark ? 'text-slate-200' : 'text-slate-800'
+              }`}
+            >
+              {language === 'hi' ? 'कुल शुद्ध परिणाम' : 'Combined Net Outcome'}
+            </span>
+          </div>
+
+          <span
+            className={`text-base sm:text-xl font-black font-mono tabular-nums ${
+              simulation.totalCombinedNet >= 0
+                ? isDark
+                  ? 'text-emerald-400'
+                  : 'text-emerald-700'
+                : isDark
+                ? 'text-rose-400'
+                : 'text-rose-700'
+            }`}
+          >
+            {simulation.totalCombinedNet >= 0
+              ? `+${currencyFormat(simulation.totalCombinedNet)}`
+              : `-${currencyFormat(Math.abs(simulation.totalCombinedNet))}`}
+          </span>
+        </div>
+
+        {/* Clean minimal calculation without extra clutter */}
+        <div
+          className={`pt-2 border-t flex flex-wrap items-center gap-1.5 text-xs ${
+            isDark ? 'border-slate-800/80' : 'border-emerald-200/80'
+          }`}
+        >
+          <span className={`text-[11px] ${isDark ? 'text-slate-400' : 'text-slate-600 font-medium'}`}>
+            {language === 'hi' ? 'कैपिटल:' : 'Capital:'}
+          </span>
+          <span
+            className={`font-mono font-bold tabular-nums ${
+              simulation.netChange >= 0
+                ? isDark
+                  ? 'text-emerald-400'
+                  : 'text-emerald-700'
+                : isDark
+                ? 'text-rose-400'
+                : 'text-rose-600'
+            }`}
+          >
+            {simulation.netChange >= 0
+              ? `+${currencyFormat(simulation.netChange)}`
+              : `-${currencyFormat(Math.abs(simulation.netChange))}`}
+          </span>
+
+          <span className={`font-bold mx-0.5 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>+</span>
+
+          <span className={`text-[11px] ${isDark ? 'text-slate-400' : 'text-slate-600 font-medium'}`}>
+            {language === 'hi' ? 'वॉलेट:' : 'Vault:'}
+          </span>
+          <span
+            className={`font-mono font-bold tabular-nums ${
+              isDark ? 'text-cyan-300' : 'text-teal-700'
+            }`}
+          >
+            +{currencyFormat(simulation.totalWalletYield)}
+          </span>
+
+          <span className={`font-bold mx-0.5 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>=</span>
+
+          <span className={`text-[11px] ${isDark ? 'text-slate-400' : 'text-slate-600 font-medium'}`}>
+            {language === 'hi' ? 'कुल:' : 'Net:'}
+          </span>
+          <span
+            className={`font-mono font-black tabular-nums ${
+              simulation.totalCombinedNet >= 0
+                ? isDark
+                  ? 'text-emerald-300'
+                  : 'text-emerald-700'
+                : isDark
+                ? 'text-rose-400'
+                : 'text-rose-700'
+            }`}
+          >
+            {simulation.totalCombinedNet >= 0
+              ? `+${currencyFormat(simulation.totalCombinedNet)}`
+              : `-${currencyFormat(Math.abs(simulation.totalCombinedNet))}`}
+          </span>
         </div>
       </div>
 
       {/* 4. Strategic Insight Banner (Comparing with Dangerous Martingale) */}
       <div
         className={`p-3 rounded-xl border text-xs leading-relaxed flex items-start gap-2.5 ${
-          scenario === 'ALL_LOSS'
-            ? 'bg-rose-950/20 border-rose-500/30 text-rose-200'
-            : 'bg-emerald-950/20 border-emerald-500/30 text-emerald-200'
+          isDark
+            ? scenario === 'ALL_LOSS'
+              ? 'bg-rose-950/20 border-rose-500/30 text-rose-200'
+              : 'bg-emerald-950/20 border-emerald-500/30 text-emerald-200'
+            : scenario === 'ALL_LOSS'
+            ? 'bg-rose-50 border-rose-200 text-rose-900'
+            : 'bg-emerald-50 border-emerald-200 text-emerald-900'
         }`}
       >
-        <ShieldCheck className="w-4 h-4 shrink-0 mt-0.5 text-cyan-400" />
+        <ShieldCheck
+          className={`w-4 h-4 shrink-0 mt-0.5 ${
+            isDark ? 'text-cyan-400' : 'text-emerald-600'
+          }`}
+        />
         <div className="space-y-1">
-          <p className="font-bold text-white">
+          <p className={`font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
             {scenario === 'ALL_LOSS'
               ? language === 'hi'
                 ? `💡 डिवाइड सिस्टम की सुरक्षा (Divide System Protection):`
@@ -575,7 +741,11 @@ export const StrategyForecastCard: React.FC = () => {
               ? `💡 नियंत्रित रिकवरी प्रभाव (Controlled Recovery):`
               : `💡 Steady Compound Effect:`}
           </p>
-          <p className="text-[11px] text-slate-300 leading-normal">
+          <p
+            className={`text-[11px] leading-normal ${
+              isDark ? 'text-slate-300' : 'text-slate-700'
+            }`}
+          >
             {scenario === 'ALL_LOSS'
               ? language === 'hi'
                 ? `यदि आप सामान्य मार्टिंगेल (दोगुना) करते, तो केवल 5वीं ट्रेड में ही पूरा खाता (₹0) साफ हो जाता। लेकिन TradeSizer के रोलिंग डिवाइड (÷ भाग) के कारण हर लॉस पर रिस्क छोटे हिस्सों में बंटता रहता है, जिससे अगली ${tradeCount} ट्रेड्स लगातार लॉस होने पर भी कुल लॉस ${currencyFormat(simulation.totalLossAccumulated)} तक ही सीमित रहता है!`
@@ -596,7 +766,11 @@ export const StrategyForecastCard: React.FC = () => {
         <button
           type="button"
           onClick={() => setShowFullTable(!showFullTable)}
-          className="w-full flex items-center justify-between p-2 rounded-lg bg-slate-900/50 hover:bg-slate-900 border border-slate-800 text-xs font-mono text-slate-300 transition-colors cursor-pointer"
+          className={`w-full flex items-center justify-between p-2 rounded-lg border text-xs font-mono transition-colors cursor-pointer ${
+            isDark
+              ? 'bg-slate-900/50 hover:bg-slate-900 border-slate-800 text-slate-300'
+              : 'bg-slate-100 hover:bg-slate-200 border-slate-200 text-slate-800'
+          }`}
         >
           <span className="font-bold">
             {language === 'hi'
@@ -604,16 +778,26 @@ export const StrategyForecastCard: React.FC = () => {
               : `Trade-by-trade breakdown (${showFullTable ? 'Hide' : 'Show'})`}
           </span>
           {showFullTable ? (
-            <ChevronUp className="w-4 h-4 text-cyan-400" />
+            <ChevronUp className={`w-4 h-4 ${isDark ? 'text-cyan-400' : 'text-slate-600'}`} />
           ) : (
-            <ChevronDown className="w-4 h-4 text-cyan-400" />
+            <ChevronDown className={`w-4 h-4 ${isDark ? 'text-cyan-400' : 'text-slate-600'}`} />
           )}
         </button>
 
         {showFullTable && (
-          <div className="overflow-x-auto rounded-xl border border-slate-800 mt-2">
+          <div
+            className={`overflow-x-auto rounded-xl border mt-2 ${
+              isDark ? 'border-slate-800' : 'border-slate-200'
+            }`}
+          >
             <table className="w-full text-left font-mono text-[11px]">
-              <thead className="bg-[#070d18] text-slate-400 uppercase text-[10px] border-b border-slate-800">
+              <thead
+                className={`uppercase text-[10px] border-b ${
+                  isDark
+                    ? 'bg-[#070d18] text-slate-400 border-slate-800'
+                    : 'bg-slate-100 text-slate-600 border-slate-200'
+                }`}
+              >
                 <tr>
                   <th className="py-2 px-2.5">#</th>
                   <th className="py-2 px-2.5">
@@ -630,26 +814,63 @@ export const StrategyForecastCard: React.FC = () => {
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800/60 bg-[#090f1d]">
+              <tbody
+                className={`divide-y ${
+                  isDark
+                    ? 'bg-[#090f1d] divide-slate-800/60'
+                    : 'bg-white divide-slate-100'
+                }`}
+              >
                 {simulation.steps.map((step) => (
-                  <tr key={step.step} className="hover:bg-slate-800/30 transition-colors">
-                    <td className="py-1.5 px-2.5 text-slate-400 font-bold">#{step.step}</td>
-                    <td className="py-1.5 px-2.5 text-white font-bold">
+                  <tr
+                    key={step.step}
+                    className={`transition-colors ${
+                      isDark ? 'hover:bg-slate-800/30' : 'hover:bg-slate-50'
+                    }`}
+                  >
+                    <td
+                      className={`py-1.5 px-2.5 font-bold ${
+                        isDark ? 'text-slate-400' : 'text-slate-500'
+                      }`}
+                    >
+                      #{step.step}
+                    </td>
+                    <td
+                      className={`py-1.5 px-2.5 font-bold ${
+                        isDark ? 'text-white' : 'text-slate-900'
+                      }`}
+                    >
                       {currencyFormat(step.tradeAmount)}
                     </td>
-                    <td className="py-1.5 px-2.5 text-amber-400 font-semibold">
+                    <td
+                      className={`py-1.5 px-2.5 font-semibold ${
+                        isDark ? 'text-amber-400' : 'text-amber-700'
+                      }`}
+                    >
                       ÷{step.factor}
                     </td>
                     <td
                       className={`py-1.5 px-2.5 font-bold ${
-                        step.pnl > 0 ? 'text-emerald-400' : 'text-rose-400'
+                        step.pnl > 0
+                          ? isDark
+                            ? 'text-emerald-400'
+                            : 'text-emerald-700'
+                          : isDark
+                          ? 'text-rose-400'
+                          : 'text-rose-600'
                       }`}
                     >
                       {step.pnl > 0 ? `+${currencyFormat(step.pnl)}` : currencyFormat(step.pnl)}
                     </td>
                     <td
                       className={`py-1.5 px-2.5 text-right font-black ${
-                        step.capitalAfter < 0 ? 'text-rose-400' : 'text-cyan-300'
+                        step.capitalAfter < 0
+                          ? isDark
+                            ? 'text-rose-400'
+                            : 'text-rose-600'
+                          : isDark
+                          ? 'text-cyan-300'
+                          : 'text-sky-700'
                       }`}
                     >
                       {currencyFormat(step.capitalAfter)}
