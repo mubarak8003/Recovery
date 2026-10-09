@@ -56,6 +56,8 @@ export interface Settings {
   maxRiskPercentCap: number; // e.g. 10% max of capital per trade
   strategy: RecoveryStrategy;
   recoveryStepsCount: number; // "Kitne martaba me recovery karni hai" (e.g. 2, 3, 4, 5, 6, 8)
+  fixedBaseCapitalMode?: boolean; // When true, trading balance stays at base capital (e.g. ₹1,000) and all surplus profit goes directly to Regular Profit Wallet
+  initialBaseCapital?: number; // Base capital to maintain (e.g. 1000)
 }
 
 export type Language = 'en' | 'hi';

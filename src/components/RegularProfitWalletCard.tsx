@@ -9,6 +9,8 @@ export const RegularProfitWalletCard: React.FC = () => {
     activeLoss,
     offsetLossWithWallet,
     compoundWalletToCapital,
+    sweepSurplusToWallet,
+    tradingCapital,
     settings,
     updateSettings,
     language,
@@ -41,6 +43,22 @@ export const RegularProfitWalletCard: React.FC = () => {
       setTimeout(() => setSuccessMsg(null), 3500);
     }
     setIsEditingVault(false);
+  };
+
+  const baseCap = settings.initialBaseCapital || 1000;
+  const surplusCapital = Math.max(0, Number((tradingCapital - baseCap).toFixed(2)));
+
+  const handleSweepSurplus = () => {
+    if (surplusCapital <= 0) return;
+    const ok = sweepSurplusToWallet();
+    if (ok) {
+      setSuccessMsg(
+        language === 'hi'
+          ? `अतिरिक्त ${currencyFormat(surplusCapital)} सीधे वॉलेट में सुरक्षित कर दिया गया! ट्रेडिंग कैपिटल अब ${currencyFormat(baseCap)} है।`
+          : `Transferred surplus ${currencyFormat(surplusCapital)} into wallet! Trading balance restored to ${currencyFormat(baseCap)}.`
+      );
+      setTimeout(() => setSuccessMsg(null), 3500);
+    }
   };
 
   const maxOffsetAvailable = Number(Math.min(regularProfitWallet, activeLoss).toFixed(2));
@@ -329,6 +347,59 @@ export const RegularProfitWalletCard: React.FC = () => {
             </div>
           </div>
         )}
+
+        {/* Sweep Surplus Capital Profit into Wallet */}
+        {surplusCapital > 0 && (
+          <div className="p-3 bg-cyan-950/30 border border-cyan-500/40 rounded-xl space-y-2">
+            <div className="flex items-center justify-between text-xs font-bold text-cyan-300">
+              <span className="flex items-center gap-1.5">
+                <Coins className="w-3.5 h-3.5 text-cyan-400" />
+                <span>{language === 'hi' ? 'अतिरिक्त कैपिटल प्रॉफ़िट वॉलेट में भेजें' : 'Sweep Surplus Profit to Wallet'}</span>
+              </span>
+              <span className="font-mono text-emerald-400">+{currencyFormat(surplusCapital)}</span>
+            </div>
+            <p className="text-[11px] text-slate-300 leading-relaxed">
+              {language === 'hi'
+                ? `ट्रेडिंग बैलेंस बेस कैपिटल (${currencyFormat(baseCap)}) से ${currencyFormat(surplusCapital)} ज्यादा है। इसे वॉलेट में भेजकर ट्रेडिंग बैलेंस को वापस शुद्ध ${currencyFormat(baseCap)} कर सकते हैं!`
+                : `Trading balance has ${currencyFormat(surplusCapital)} surplus above base ${currencyFormat(baseCap)}. Transfer it to wallet to keep trading balance locked at ${currencyFormat(baseCap)}.`}
+            </p>
+            <button
+              type="button"
+              onClick={handleSweepSurplus}
+              className="w-full py-2 px-3 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs transition-colors cursor-pointer flex items-center justify-center gap-1.5 shadow-md shadow-cyan-500/20"
+            >
+              <Coins className="w-3.5 h-3.5" />
+              <span>
+                {language === 'hi'
+                  ? `अतिरिक्त ${currencyFormat(surplusCapital)} वॉलेट में भेजें (ट्रेडिंग बैलेंस ${currencyFormat(baseCap)} करें)`
+                  : `Transfer Surplus ${currencyFormat(surplusCapital)} to Wallet (Set Capital to ${currencyFormat(baseCap)})`}
+              </span>
+            </button>
+          </div>
+        )}
+
+        {/* Auto-Lock Base Capital Toggle */}
+        <div className="flex items-center justify-between p-2.5 bg-slate-900/60 border border-slate-800 rounded-xl text-xs">
+          <div className="space-y-0.5">
+            <span className="font-bold text-white block">
+              {language === 'hi' ? `🔒 फिक्स्ड कैपिटल मोड (Auto-Lock ${currencyFormat(baseCap)})` : `🔒 Auto-Lock Capital at ${currencyFormat(baseCap)}`}
+            </span>
+            <span className="text-[10px] text-slate-400 block">
+              {language === 'hi'
+                ? 'ट्रेडिंग बैलेंस हमेशा बेस कैपिटल रहेगा, रिकवरी और विन का सारा अतिरिक्त लाभ सीधा वॉलेट में जाएगा'
+                : 'Keep trading balance at base capital; auto-route all surplus profit into vault'}
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => updateSettings({ fixedBaseCapitalMode: !settings.fixedBaseCapitalMode })}
+            className={`w-11 h-6 flex items-center rounded-full p-1 transition-colors cursor-pointer ${
+              settings.fixedBaseCapitalMode ? 'bg-cyan-500 justify-end' : 'bg-slate-700 justify-start'
+            }`}
+          >
+            <span className="bg-white w-4 h-4 rounded-full shadow-md" />
+          </button>
+        </div>
 
         {/* Compound Button */}
         {regularProfitWallet > 0 && (

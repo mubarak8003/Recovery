@@ -55,6 +55,7 @@ interface TradeContextType {
   undoLastTrade: () => void;
   offsetLossWithWallet: (amount: number) => boolean;
   compoundWalletToCapital: (amount: number) => boolean;
+  sweepSurplusToWallet: () => boolean;
   updateSettings: (newSettings: Partial<Settings>) => void;
   setTradingCapital: (amount: number) => void;
   setActiveLossAmount: (amount: number) => void;
@@ -80,6 +81,8 @@ const DEFAULT_SETTINGS: Settings = {
   maxRiskPercentCap: 15, // Max 15% risk cap in recovery
   strategy: 'SMART_LADDER',
   recoveryStepsCount: 1, // Default Divide by 1 se start hoga
+  fixedBaseCapitalMode: false,
+  initialBaseCapital: 1000,
 };
 
 const STORAGE_KEY = 'tradesizer_saved_session_v2';
@@ -420,7 +423,20 @@ export const TradeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         // Wallet gets its share, and Trading Capital gets the remaining share:
         const netCapitalProfit = Number(Math.max(0, totalWinPayout - walletYieldAdded).toFixed(2));
 
-        setTradingCapitalState((prev) => Number((prev + netCapitalProfit).toFixed(2)));
+        if (settings.fixedBaseCapitalMode) {
+          const targetBase = settings.initialBaseCapital || 1000;
+          const candidateCap = Number((tradingCapital + netCapitalProfit).toFixed(2));
+          if (candidateCap > targetBase) {
+            const surplus = Number((candidateCap - targetBase).toFixed(2));
+            setTradingCapitalState(targetBase);
+            setRegularProfitWallet((prev) => Number((prev + surplus).toFixed(2)));
+            setLifetimeYieldEarned((prev) => Number((prev + surplus).toFixed(2)));
+          } else {
+            setTradingCapitalState(candidateCap);
+          }
+        } else {
+          setTradingCapitalState((prev) => Number((prev + netCapitalProfit).toFixed(2)));
+        }
 
         if (activeLoss > 0) {
           const recovered = Math.min(activeLoss, netCapitalProfit);
@@ -550,6 +566,17 @@ export const TradeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     [regularProfitWallet]
   );
 
+  // Sweep surplus trading capital profit above base capital into Regular Profit Wallet
+  const sweepSurplusToWallet = useCallback(() => {
+    const baseCap = settings.initialBaseCapital || 1000;
+    if (tradingCapital <= baseCap) return false;
+    const surplus = Number((tradingCapital - baseCap).toFixed(2));
+    setTradingCapitalState(baseCap);
+    setRegularProfitWallet((prev) => Number((prev + surplus).toFixed(2)));
+    setLifetimeYieldEarned((prev) => Number((prev + surplus).toFixed(2)));
+    return true;
+  }, [tradingCapital, settings.initialBaseCapital]);
+
   const updateSettings = useCallback((newSettings: Partial<Settings>) => {
     setSettings((prev) => ({ ...prev, ...newSettings }));
     if (
@@ -637,6 +664,7 @@ export const TradeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         undoLastTrade,
         offsetLossWithWallet,
         compoundWalletToCapital,
+        sweepSurplusToWallet,
         updateSettings,
         setTradingCapital,
         setActiveLossAmount,
