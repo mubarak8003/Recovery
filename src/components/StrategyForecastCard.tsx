@@ -13,7 +13,7 @@ import {
   Info,
 } from 'lucide-react';
 
-type ForecastScenario = 'ALL_LOSS' | 'ALL_WIN' | 'ALTERNATING';
+type ForecastScenario = 'ALL_LOSS' | 'ALL_WIN' | 'WIN_RATE';
 
 interface SimulatedStep {
   step: number;
@@ -40,6 +40,8 @@ export const StrategyForecastCard: React.FC = () => {
   const [tradeCount, setTradeCount] = useState<number>(20);
   const [customCountInput, setCustomCountInput] = useState<string>('20');
   const [scenario, setScenario] = useState<ForecastScenario>('ALL_LOSS');
+  const [customWinRate, setCustomWinRate] = useState<number>(50);
+  const [winRateInput, setWinRateInput] = useState<string>('50');
   const [showFullTable, setShowFullTable] = useState<boolean>(false);
 
   const effectiveRR = Math.max(0.1, Number(settings.riskRewardRatio) || 0.85);
@@ -59,6 +61,9 @@ export const StrategyForecastCard: React.FC = () => {
     let totalWalletYield = 0;
     let totalLossAccumulated = 0;
     let totalProfitEarned = 0;
+    let simWinsCount = 0;
+    let simLossesCount = 0;
+    let winAccumulator = 0;
 
     const steps: SimulatedStep[] = [];
 
@@ -86,8 +91,20 @@ export const StrategyForecastCard: React.FC = () => {
       } else if (scenario === 'ALL_LOSS') {
         isWin = false;
       } else {
-        // Alternating: Loss first, then Win
-        isWin = i % 2 === 0;
+        // Dynamic adjustable Win Rate (e.g. 35%, 40%, 50%, 60%, 70%)
+        winAccumulator += customWinRate;
+        if (winAccumulator >= 100) {
+          isWin = true;
+          winAccumulator -= 100;
+        } else {
+          isWin = false;
+        }
+      }
+
+      if (isWin) {
+        simWinsCount++;
+      } else {
+        simLossesCount++;
       }
 
       const yieldEarned = Number((tradeAmount * safeYieldRate).toFixed(2));
@@ -151,6 +168,8 @@ export const StrategyForecastCard: React.FC = () => {
       totalProfitEarned,
       totalWalletYield,
       drawdownPct,
+      simWinsCount,
+      simLossesCount,
     };
   }, [
     tradingCapital,
@@ -161,6 +180,7 @@ export const StrategyForecastCard: React.FC = () => {
     startFactor,
     tradeCount,
     scenario,
+    customWinRate,
   ]);
 
   return (
@@ -292,12 +312,12 @@ export const StrategyForecastCard: React.FC = () => {
           </span>
         </button>
 
-        {/* Scenario 3: 50% Win Rate */}
+        {/* Scenario 3: Custom Win Rate */}
         <button
           type="button"
-          onClick={() => setScenario('ALTERNATING')}
+          onClick={() => setScenario('WIN_RATE')}
           className={`py-2 px-1.5 rounded-xl border flex flex-col items-center justify-center gap-0.5 transition-all cursor-pointer text-center ${
-            scenario === 'ALTERNATING'
+            scenario === 'WIN_RATE'
               ? 'bg-amber-500/15 border-amber-500/50 text-amber-300 font-bold shadow-sm shadow-amber-950/30'
               : 'bg-slate-900/40 border-slate-800 text-slate-400 hover:text-slate-200'
           }`}
@@ -305,14 +325,107 @@ export const StrategyForecastCard: React.FC = () => {
           <div className="flex items-center gap-1">
             <Activity className="w-3.5 h-3.5 text-amber-400" />
             <span className="text-[11px] font-extrabold uppercase">
-              {language === 'hi' ? '50% विन रेट' : '50% Win Rate'}
+              {customWinRate}% {language === 'hi' ? 'विन रेट' : 'Win Rate'}
             </span>
           </div>
           <span className="text-[9px] text-slate-400 font-sans">
-            {language === 'hi' ? '(सामान्य मार्केट)' : '(Normal Market)'}
+            {language === 'hi' ? '(कम/ज्यादा करें)' : '(Custom Win %)'}
           </span>
         </button>
       </div>
+
+      {/* 2B. Win Rate Adjuster Toolbar (Active when WIN_RATE selected) */}
+      {scenario === 'WIN_RATE' && (
+        <div className="p-2.5 sm:p-3 bg-amber-950/20 border border-amber-500/30 rounded-xl space-y-2 animate-in fade-in duration-150">
+          <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+            <div className="flex items-center gap-1.5 font-bold text-amber-300">
+              <Activity className="w-3.5 h-3.5 text-amber-400" />
+              <span>{language === 'hi' ? 'विन रेट सेट करें (कम या ज्यादा):' : 'Adjust Win Rate (%):'}</span>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] font-mono text-slate-300">
+                {language === 'hi'
+                  ? `अगली ${tradeCount} में: ${simulation.simWinsCount} जीत / ${simulation.simLossesCount} हार`
+                  : `Next ${tradeCount}: ${simulation.simWinsCount}W / ${simulation.simLossesCount}L`}
+              </span>
+
+              {/* Stepper & Input */}
+              <div className="flex items-center gap-1 font-mono">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const next = Math.max(5, customWinRate - 5);
+                    setCustomWinRate(next);
+                    setWinRateInput(String(next));
+                  }}
+                  className="w-6 h-6 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold flex items-center justify-center cursor-pointer text-xs"
+                  title="Decrease 5%"
+                >
+                  -
+                </button>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={winRateInput}
+                  onChange={(e) => {
+                    setWinRateInput(e.target.value);
+                    const p = parseInt(e.target.value, 10);
+                    if (!isNaN(p) && p >= 1 && p <= 99) {
+                      setCustomWinRate(p);
+                    }
+                  }}
+                  onBlur={() => {
+                    const p = parseInt(winRateInput, 10);
+                    if (isNaN(p) || p < 1 || p > 99) {
+                      setWinRateInput(String(customWinRate));
+                    } else {
+                      setCustomWinRate(p);
+                      setWinRateInput(String(p));
+                    }
+                  }}
+                  onFocus={(e) => e.target.select()}
+                  className="w-12 px-1 py-0.5 bg-slate-900 border border-slate-700 focus:border-amber-400 rounded text-amber-300 font-black text-xs text-center focus:outline-none"
+                />
+                <span className="text-xs font-bold text-amber-300">%</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const next = Math.min(95, customWinRate + 5);
+                    setCustomWinRate(next);
+                    setWinRateInput(String(next));
+                  }}
+                  className="w-6 h-6 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold flex items-center justify-center cursor-pointer text-xs"
+                  title="Increase 5%"
+                >
+                  +
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Quick preset chips */}
+          <div className="flex items-center gap-1 font-mono text-[10px] overflow-x-auto py-0.5 scrollbar-none">
+            {[30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80].map((rate) => (
+              <button
+                key={rate}
+                type="button"
+                onClick={() => {
+                  setCustomWinRate(rate);
+                  setWinRateInput(String(rate));
+                }}
+                className={`px-2 py-1 rounded font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
+                  customWinRate === rate
+                    ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
+                    : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                }`}
+              >
+                {rate}%
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* 3. High-Impact Result Summary Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 font-mono">
@@ -336,8 +449,8 @@ export const StrategyForecastCard: React.FC = () => {
                 ? 'कुल शुद्ध लाभ (Profit)'
                 : 'Total Net Profit'
               : language === 'hi'
-              ? 'नेट लाभ/हानि'
-              : 'Net P&L'}
+              ? `${customWinRate}% विन रेट पर P&L`
+              : `Net P&L @ ${customWinRate}% Win Rate`}
           </span>
           <div className="text-base sm:text-lg font-black tabular-nums mt-0.5">
             {scenario === 'ALL_LOSS' ? (
@@ -409,9 +522,13 @@ export const StrategyForecastCard: React.FC = () => {
               ? language === 'hi'
                 ? `यदि आप सामान्य मार्टिंगेल (दोगुना) करते, तो केवल 5वीं ट्रेड में ही पूरा खाता (₹0) साफ हो जाता। लेकिन TradeSizer के रोलिंग डिवाइड (÷ भाग) के कारण हर लॉस पर रिस्क छोटे हिस्सों में बंटता रहता है, जिससे अगली ${tradeCount} ट्रेड्स लगातार लॉस होने पर भी कुल लॉस ${currencyFormat(simulation.totalLossAccumulated)} तक ही सीमित रहता है!`
                 : `In traditional Martingale (2x doubling), an account blows up in just 5 trades. With TradeSizer's Rolling Divide system, risk is fractionally divided across steps, ensuring survival even through an extreme streak of ${tradeCount} losses.`
+              : scenario === 'ALL_WIN'
+              ? language === 'hi'
+                ? `प्रत्येक जीत पर ब्रोकर पेआउट के साथ सुरक्षित वॉलेट में भी मुनाफा लॉक होता रहता है।`
+                : `Each winning trade compounds the trading capital while locking steady yield in your safe vault.`
               : language === 'hi'
-              ? `प्रत्येक जीत पर ब्रोकर पेआउट के साथ सुरक्षित वॉलेट में भी मुनाफा लॉक होता रहता है।`
-              : `Each winning trade compounds the trading capital while locking steady yield in your safe vault.`}
+              ? `अगली ${tradeCount} ट्रेड्स में यदि आप ${simulation.simWinsCount} जीतते हैं और ${simulation.simLossesCount} हारते हैं (${customWinRate}% विन रेट), तो आपका शुद्ध परिणाम ${simulation.netChange >= 0 ? `+${currencyFormat(simulation.netChange)}` : currencyFormat(simulation.netChange)} रहेगा और वॉलेट में +${currencyFormat(simulation.totalWalletYield)} जुड़ेगा!`
+              : `With ${customWinRate}% win rate across next ${tradeCount} trades (${simulation.simWinsCount}W / ${simulation.simLossesCount}L), net outcome is ${simulation.netChange >= 0 ? `+${currencyFormat(simulation.netChange)}` : currencyFormat(simulation.netChange)} with +${currencyFormat(simulation.totalWalletYield)} added to safe vault.`}
           </p>
         </div>
       </div>
