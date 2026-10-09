@@ -35,7 +35,9 @@ export const HeaderBar: React.FC = () => {
   const [isEditingCapital, setIsEditingCapital] = useState(false);
   const [tempCapital, setTempCapital] = useState<string>(String(tradingCapital));
   const [isResetModalOpen, setIsResetModalOpen] = useState(false);
-  const [resetCapitalInput, setResetCapitalInput] = useState<string>(String(tradingCapital || 10000));
+  const [resetCapitalInput, setResetCapitalInput] = useState<string>(
+    String(settings.initialBaseCapital || tradingCapital || 10000)
+  );
 
   const handleSaveCapital = () => {
     const val = parseFloat(tempCapital);
@@ -235,7 +237,7 @@ export const HeaderBar: React.FC = () => {
             {/* Refresh / Reset Session Button */}
             <button
               onClick={() => {
-                setResetCapitalInput(String(tradingCapital || 10000));
+                setResetCapitalInput(String(settings.initialBaseCapital || tradingCapital || 10000));
                 setIsResetModalOpen(true);
               }}
               className="flex items-center gap-1 p-1.5 sm:px-2.5 rounded-lg border border-cyan-500/40 bg-cyan-950/30 hover:bg-cyan-900/40 text-cyan-300 hover:text-white transition-colors cursor-pointer shrink-0 text-xs font-mono shadow-sm"

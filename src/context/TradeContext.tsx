@@ -82,7 +82,7 @@ const DEFAULT_SETTINGS: Settings = {
   strategy: 'SMART_LADDER',
   recoveryStepsCount: 1, // Default Divide by 1 se start hoga
   fixedBaseCapitalMode: false,
-  initialBaseCapital: 1000,
+  initialBaseCapital: 10000,
 };
 
 const STORAGE_KEY = 'tradesizer_saved_session_v2';
@@ -107,8 +107,14 @@ function getInitialSavedData(): SavedSessionData | null {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw);
-    if (parsed && parsed.settings && (!parsed.activeLoss || parsed.activeLoss <= 0)) {
-      parsed.settings.recoveryStepsCount = 1;
+    if (parsed && parsed.settings) {
+      if (!parsed.activeLoss || parsed.activeLoss <= 0) {
+        parsed.settings.recoveryStepsCount = 1;
+      }
+      // Migrate old placeholder 1000 base capital to actual session starting capital:
+      if (!parsed.settings.initialBaseCapital || parsed.settings.initialBaseCapital === 1000) {
+        parsed.settings.initialBaseCapital = parsed.tradingCapital || 10000;
+      }
     }
     // Ensure lifetime yield reflects all-time total earnings while preserving actual current vault balance:
     if (parsed && Array.isArray(parsed.tradeHistory) && parsed.tradeHistory.length > 0) {
@@ -424,7 +430,9 @@ export const TradeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         const netCapitalProfit = Number(Math.max(0, totalWinPayout - walletYieldAdded).toFixed(2));
 
         if (settings.fixedBaseCapitalMode) {
-          const targetBase = settings.initialBaseCapital || 1000;
+          const targetBase = (settings.initialBaseCapital && settings.initialBaseCapital > 0)
+            ? settings.initialBaseCapital
+            : tradingCapital;
           const candidateCap = Number((tradingCapital + netCapitalProfit).toFixed(2));
           if (candidateCap > targetBase) {
             const surplus = Number((candidateCap - targetBase).toFixed(2));
@@ -566,9 +574,11 @@ export const TradeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     [regularProfitWallet]
   );
 
-  // Sweep surplus trading capital profit above base capital into Regular Profit Wallet
+  // Sweep surplus trading capital profit above starting session capital into Regular Profit Wallet
   const sweepSurplusToWallet = useCallback(() => {
-    const baseCap = settings.initialBaseCapital || 1000;
+    const baseCap = (settings.initialBaseCapital && settings.initialBaseCapital > 0)
+      ? settings.initialBaseCapital
+      : tradingCapital;
     if (tradingCapital <= baseCap) return false;
     const surplus = Number((tradingCapital - baseCap).toFixed(2));
     setTradingCapitalState(baseCap);
@@ -589,7 +599,12 @@ export const TradeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   }, []);
 
   const setTradingCapital = useCallback((amount: number) => {
-    setTradingCapitalState(Math.max(100, amount));
+    const val = Math.max(100, amount);
+    setTradingCapitalState(val);
+    setSettings((prev) => ({
+      ...prev,
+      initialBaseCapital: val,
+    }));
   }, []);
 
   const setActiveLossAmount = useCallback((amount: number) => {
@@ -614,7 +629,8 @@ export const TradeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   }, []);
 
   const resetAll = useCallback((newCapital: number = 10000) => {
-    setTradingCapitalState(newCapital);
+    const cap = Math.max(100, Number(newCapital) || 10000);
+    setTradingCapitalState(cap);
     setRegularProfitWallet(0);
     setLifetimeYieldEarned(0);
     setActiveLoss(0);
@@ -625,7 +641,11 @@ export const TradeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     setTotalLossCount(0);
     setTradeHistory([]);
     setCustomTradeAmountOverride(null);
-    setSettings((prev) => ({ ...prev, recoveryStepsCount: 1 }));
+    setSettings((prev) => ({
+      ...prev,
+      recoveryStepsCount: 1,
+      initialBaseCapital: cap,
+    }));
     try {
       localStorage.removeItem(STORAGE_KEY);
     } catch {
